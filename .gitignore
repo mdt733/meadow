@@ -1,0 +1,18 @@
+# Local/OS/tool artefacts; the actual panorama is intentionally committed.
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+node_modules/
+__pycache__/
+*.zip
+*.local.*
+.env
+.env.*
+*.pem
+*.key
+
+# Local packaging / publishing helpers (not part of public source)
+/OPEN_MEADOW.cmd
+/PUBLISH_TO_GITHUB.cmd
+/scripts/
