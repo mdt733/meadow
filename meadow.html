@@ -54,6 +54,18 @@ html.tilt-steering .fly-touch{justify-content:flex-end}
 html.tilt-steering .fly-joystick{display:none}
 @media(pointer:fine){#flySensor,#flyRecenter,#flyInvert{display:none!important}}
 @media(pointer:coarse) and (orientation:landscape) and (max-height:520px){.fly-tools{top:max(5px,env(safe-area-inset-top));right:max(7px,env(safe-area-inset-right));width:112px;gap:3px}.fly-tools button,.fly-tools a{min-height:29px;padding:4px 6px;font-size:10px}.fly-top{max-width:calc(100vw - 145px)}.fly-touch{bottom:max(6px,env(safe-area-inset-bottom))}.fly-flap{height:63px;width:84px}}
+
+/* Robot-only assets are loaded on demand after the secret rock landing. */
+#emuWake[hidden],#emuLoader[hidden],#emuLeave[hidden]{display:none!important}
+#emuWake{position:fixed;z-index:17;left:50%;transform:translateX(-50%);bottom:clamp(145px,23vh,225px);
+ padding:12px 20px;border:1px solid #fff9cc;border-radius:18px;color:#254637;
+ background:#edf8ddeb;box-shadow:0 8px 35px #172b2780;cursor:pointer;font:700 14px system-ui;max-width:90vw}
+#emuLoader{position:fixed;z-index:20;left:50%;top:35%;transform:translateX(-50%);width:min(300px,85vw);
+ padding:18px 22px;border-radius:18px;background:#163631ea;border:1px solid #a8dfb477;color:#f0ffe7;
+ box-shadow:0 16px 60px #061b1bd0;font:13px/1.55 system-ui;text-align:center}
+#emuLoader strong{display:block;font:600 18px Georgia,serif;margin-bottom:7px}
+#emuLoader progress{width:100%;height:11px;margin:8px 0;accent-color:#a6dd9a}
+#emuLeave{border:1px solid #fff7d5a1;border-radius:12px;background:#21483fbd;color:#fffbea;padding:7px 10px;min-height:35px;cursor:pointer}
 </style><script>if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embedded')</script></head><body>
 <button id="flyStart" title="Pilot a butterfly in the meadow" type="button">🦋 Fly a butterfly</button>
 <div id="flyHud" hidden aria-label="Butterfly flight simulator">
@@ -64,19 +76,24 @@ html.tilt-steering .fly-joystick{display:none}
     <button id="flySensor" type="button" aria-pressed="false" title="Use phone tilt to steer">◈ Tilt off</button>
     <button id="flyRecenter" type="button" hidden title="Make this the neutral steering angle">◎ Recenter</button>
     <button id="flyInvert" type="button" hidden title="Reverse tilt-to-climb direction">Pitch: normal</button>
+    <button id="emuLeave" type="button" hidden>🦋 Fly away</button>
     <button id="flyExit" type="button" aria-label="Leave butterfly flight">✕ Exit</button>
     <a id="flyStandalone" href="meadow.html?pilot=1" target="_blank" rel="noopener" hidden>Open standalone ↗</a>
     <span id="flySensorStatus" role="status" aria-live="polite"></span>
   </div>
-  <div class="fly-instructions">W · dive &nbsp; S · climb &nbsp; A / D · bank &nbsp; SPACE · flap / launch &nbsp; Perch on flowers, rocks, leaves or the swing &nbsp; ESC · exit</div>
+  <div class="fly-instructions" id="flyInstructions">W · dive &nbsp; S · climb &nbsp; A / D · bank &nbsp; SPACE · flap / launch &nbsp; Perch on flowers, rocks, leaves or the swing &nbsp; ESC · exit</div>
   <div class="fly-touch" aria-label="Touch flight controls"><div id="flyJoystick" class="fly-joystick" role="group" aria-label="Flight joystick: up to climb, down to dive, left and right to bank"><div id="flyStick" class="fly-stick" aria-hidden="true"></div></div><button type="button" class="fly-flap" data-flight-key="space">FLAP 🦋</button></div>
 </div>
+<button id="emuWake" type="button" hidden>✧ Wake the little robot</button>
+<div id="emuLoader" hidden role="status" aria-live="polite"><strong>Waking EMU…</strong><progress id="emuProgress" max="1" value="0"></progress><div id="emuLoadStatus">Loading the champion's brain</div></div>
 <canvas id="scene" tabindex="0" aria-label="A golden hour meadow with an apple tree, miniature fairy door and gently swaying swing and wandering butterflies. Drag to orbit, scroll to zoom."></canvas><div id="mist"></div>
 <h1>Go <em>outside.</em></h1>
 <footer><small>nothing to catch up on.</small><div class="buttons"><button class="round" id="pause" title="Pause animation" aria-label="Pause animation" aria-pressed="false"><svg id="pauseIcon" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button></div></footer>
 <div id="webgl-fallback"><div><strong>Go outside.</strong><p>A WebGL-capable browser is needed for the meadow.</p></div></div>
 <script>(()=>{'use strict';
 const $=id=>document.getElementById(id), canvas=$('scene');
+let emu=null,emuRiding=false,emuLoading=false;
+const originalFlightInstructions=$('flyInstructions').textContent;
 const gl=canvas.getContext('webgl',{alpha:false,antialias:true,powerPreference:'low-power',depth:true,preserveDrawingBuffer:false});
 if(!gl){$('webgl-fallback').style.display='grid';return}
 const TAU=Math.PI*2, PI=Math.PI, clamp=(n,a,b)=>Math.min(b,Math.max(a,n)),lerp=(a,b,t)=>a+(b-a)*t;
@@ -396,6 +413,7 @@ for(let i=0;i<8900;i++){
 // ── Vegetation, dynamic wildlife and lightweight perch surfaces ──
 const flowers=[];
 const perchSites=[],rockSurfaces=[];
+const EMU_ROCK={x:7,z:9.1};
 let flowerTouch={flower:null,until:0};
 function nudgeFlower(f){if(!f)return;flowerTouch={flower:f,until:time+1.5};
  for(let i=0;i<7;i++)pollen.push({pos:[f.x+range(-.08,.08),f.y+.08+range(0,.12),f.z+range(-.08,.08)],velocity:[range(-.24,.24),range(.09,.36),range(-.24,.24)],life:range(.45,1.25)});
@@ -675,6 +693,11 @@ for(let i=0;i<17;i++){
  addRock(p,[r,sy,r*range(.65,1.50)],[range(0,TAU),lookout?range(-.2,.2):range(-.52,.52),lookout?range(-.2,.2):range(-.62,.62)],depth,range(.86,1.17));
  sceneryCounts.rocks++;
 }
+// Small asymmetric real rock mesh, with the existing rock collision triangles.
+addRock([EMU_ROCK.x,height(EMU_ROCK.x,EMU_ROCK.z),EMU_ROCK.z],
+ [.49,.38,.43],[.41,-.24,.18],.13,.90);
+rockSurfaces[rockSurfaces.length-1].emuWake=true;
+sceneryCounts.rocks++;
 const GROUND_LEAF_COUNT=38;
 {
  let litterSeed=0x51eed;
@@ -830,7 +853,7 @@ function landingContact(previous,next,vertical,horizontal){
    if(Math.abs(next[0]-rock.x)>rock.radius||Math.abs(next[2]-rock.z)>rock.radius)continue;
    const top=rockHeightAt(rock,next[0],next[2]);
    if(top && top.y>height(next[0],next[2])+.015)
-    consider({type:'rock',pos:[next[0],top.y+.12,next[2]],normal:top.normal},top.y+.12);
+    consider({type:'rock',pos:[next[0],top.y+.12,next[2]],normal:top.normal,emuWake:rock.emuWake===true},top.y+.12);
   }
   if(horizontal<1.70)for(const f of flowers){
    if(Math.abs(next[0]-f.x)<.19&&Math.abs(next[2]-f.z)<.19&&Math.hypot(next[0]-f.x,next[2]-f.z)<.19)
@@ -1259,6 +1282,68 @@ function drawRaces(){
  gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.disable(gl.CULL_FACE);
  uploadDynamic(raceBuffer,raceVerts);attributes();gl.drawArrays(gl.TRIANGLES,0,raceVerts.length/10);
 }
+
+function showEmuRockPrompt(site){
+ $('emuWake').hidden=!Boolean(flight.active&&flight.landed&&site?.emuWake&&!emuLoading);
+ $('emuWake').textContent=emu?'✧ Ride EMU again':'✧ Wake the little robot';
+}
+function mountEmu(){
+ if(!emu||!flight.active)return;
+ emuRiding=true;flight.landed=false;flight.perch=null;flight.perchFlower=null;
+ flight.keys=Object.create(null);resetJoystick();flight.cameraEye=null;flight.lookYaw=0;
+ $('emuWake').hidden=true;$('emuLeave').hidden=false;
+ $('flyInstructions').textContent='W / S · forward / back   A / D · turn   SPACE · release butterfly   ESC · return to meadow';
+ flight.mode='EMU RIDER';flight.b.state='perched';flight.b.mode='glide';
+}
+function dismountEmu(toFlight=true){
+ if(!emuRiding)return;
+ emuRiding=false;$('emuLeave').hidden=true;resetJoystick();flight.keys=Object.create(null);
+ $('flyInstructions').textContent=originalFlightInstructions;
+ if(toFlight&&flight.active&&flight.b){
+  const p=emu.head;flight.b.pos=[p[0],p[1]+.24,p[2]];
+  flight.b.heading=emu.heading;flight.b.bank=0;flight.b.pitch=.32;
+  flight.b.state='flying';flight.b.mode='flap';flight.b.energy=Math.max(flight.b.energy,.55);
+  flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.cameraEye=null;
+  flight.speed=1.6;flight.gamma=.35;flight.flapGlow=.25;flight.flapCooldown=.27;
+ }
+}
+$('emuLeave').onclick=()=>dismountEmu();
+$('emuWake').onclick=async()=>{
+ if(emuLoading||!flight.active||!flight.landed||!flight.perch?.emuWake)return;
+ if(emu){mountEmu();return;}
+ emuLoading=true;$('emuWake').hidden=true;$('emuLoader').hidden=false;
+ $('emuProgress').value=0;$('emuLoadStatus').textContent='Loading the champion brain';
+ try{
+  const module=await import('./emu/emu.js');
+  emu=await module.loadEmu(p=>{
+   $('emuProgress').value=p;
+   $('emuLoadStatus').textContent=p<1?'Downloading the trained actor · '+Math.round(p*100)+'%':'Preparing six little servos…';
+  });
+  emu.setWorld(height,EMU_ROCK.x+1,EMU_ROCK.z);
+  mountEmu();
+ }catch(error){
+  console.error('Unable to wake EMU:',error);
+  $('emuLoadStatus').textContent='Unable to wake EMU: '+String(error.message||error);
+  $('emuWake').hidden=false;$('emuWake').textContent='↻ Try waking EMU';
+ }finally{emuLoading=false;$('emuLoader').hidden=true;}
+};
+function stepEmu(dt){
+ if(!emu)return;
+ let command;
+ if(emuRiding&&flight.active){
+  const k=flight.keys;
+  if(k.space){dismountEmu();return;}
+  const forward=clamp((k.w?1:0)-(k.s?1:0)+joystick.y,-1,1);
+  const steering=clamp((k.d?1:0)-(k.a?1:0)+joystick.x,-1,1);
+  command={vx:forward*.27,vy:0,yaw:steering};
+ }else command=emu.autopilot(window.__meadowWorld?.getLizard?.());
+ emu.advance(dt,command);
+ if(emuRiding&&flight.b){
+  const p=emu.head,b=flight.b;b.pos=[p[0],p[1]+.055,p[2]];
+  b.heading=emu.heading;b.pitch=0;b.bank=0;b.state='perched';b.mode='glide';
+  b.phase+=dt*1.6;b.vel=[0,0,0];b.speed=0;
+ }
+}
 function beginFlight(){
  if(flight.active)return;
  resetJoystick();
@@ -1275,7 +1360,7 @@ function beginFlight(){
  canvas.focus({preventScroll:true});updateCamera();draw();
  if(window.parent!==window)window.parent.postMessage({type:'meadow-flight-state',active:true},location.origin);
 }
-function endFlight(){if(!flight.active)return;resetJoystick();setTiltMode(false);exitImmersive();document.documentElement.classList.remove('flight-active');raceReset();$('raceToast').hidden=true;$('raceDirection').hidden=true;$('flyRace').textContent='';flight.active=false;flight.keys=Object.create(null);flight.cameraEye=null;flight.lookYaw=0;flight.lookElevation=.28;flight.b=null;
+function endFlight(){if(!flight.active)return;dismountEmu(false);$('emuWake').hidden=true;resetJoystick();setTiltMode(false);exitImmersive();document.documentElement.classList.remove('flight-active');raceReset();$('raceToast').hidden=true;$('raceDirection').hidden=true;$('flyRace').textContent='';flight.active=false;flight.keys=Object.create(null);flight.cameraEye=null;flight.lookYaw=0;flight.lookElevation=.28;flight.b=null;
  $('flyHud').hidden=true;$('flyStart').hidden=false;
  down=null;updateCamera();draw();if(window.parent!==window)window.parent.postMessage({type:'meadow-flight-state',active:false},location.origin);
 }
@@ -1287,7 +1372,7 @@ function landFlight(site=null){
  flight.takeoffArmed=false;flight.touchdown=0;flight.stalled=false;
  flight.speed=0;flight.gamma=0;flight.yawRate=0;flight.vs=0;
  flight.lookYaw=0;flight.lookElevation=.28; // Start behind the perched butterfly.
- perchedPose(b,site);b.phase=PI/2;
+ perchedPose(b,site);b.phase=PI/2;showEmuRockPrompt(site);
  emitPollenOnFlower(site);
  // This only steers the existing lizard toward prey it can physically reach.
  // Safe tree/swing perches do NOT become mouse targets or edible butterflies.
@@ -1309,7 +1394,17 @@ function sweepNectar(from,to){
  }
 }
 function stepFlight(dt){
- if(!flight.active)return;const b=flight.b,k=flight.keys,c=FLY;
+ if(!flight.active)return;
+ if(emuRiding&&emu){
+  const p=emu.head,b=flight.b;b.pos=[p[0],p[1]+.055,p[2]];
+  $('flySpeed').textContent=Math.abs(emu.vx).toFixed(2);
+  $('flyAltitude').textContent=(emu.y-height(emu.x,emu.z)).toFixed(2);
+  $('flyVertical').textContent='0.0';$('flyMode').textContent='EMU RIDER';
+  $('flyNectar').textContent=flight.nectar;$('flyEnergy').style.width='100%';
+  $('flyAlert').textContent='260M champion · real actor, lightweight garden physics proxy · falls '+emu.falls;
+  return;
+ }
+ const b=flight.b,k=flight.keys,c=FLY;
  // Integrate in small, bounded slices. Avoid frame-rate-dependent stall/wall impulses.
  const n=Math.ceil(dt/.018),h=dt/n;
  for(let j=0;j<n;j++){
