@@ -1351,7 +1351,7 @@ function beginFlight(){
  Object.assign(flight.b,{pos:[x,height(x,z)+2.45,z],heading:-2.62,pitch:.09,bank:0,energy:1,phase:0,hz:1/FLY.flapInterval,mode:'glide',state:'flying',col:[.99,.70,.23]});
  flight.keys=Object.create(null);flight.active=true;flight.speed=1.9;flight.gamma=-.06;
  flight.flapCooldown=0;flight.flapGlow=0;flight.stalled=false;flight.yawRate=0;
- flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;flight.lookYaw=0;flight.lookElevation=.28;flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
+ flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;flight.lookYaw=0;flight.lookElevation=.28;flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;$('emuWake').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
  raceReset();$('flyRace').textContent='';$('raceDirection').hidden=true;$('raceToast').hidden=true;
  flight.vs=0;flight.mode='GLIDING';$('flyHud').hidden=false;$('flyStart').hidden=true;
  document.documentElement.classList.add('flight-active');
@@ -1895,6 +1895,15 @@ window.__meadowWorld={height,project:projectPoint,
 function frameShift(){return landscape.framing*(W<680?.42:1)}
 // ── Camera, WebGL frame and input loop ──
 function updateCamera(){
+ if(flight.active&&emuRiding&&emu){
+  const h=emu.heading,p=emu.head;
+  const target=[p[0],p[1]-.045,p[2]];
+  const desired=[p[0]-Math.sin(h)*1.8,p[1]+.80,p[2]-Math.cos(h)*1.8];
+  desired[1]=Math.max(desired[1],height(desired[0],desired[2])+.4);
+  flight.cameraEye=flight.cameraEye?flight.cameraEye.map((x,i)=>lerp(x,desired[i],.17)):desired;
+  const look=viewMatrix(flight.cameraEye,target),projection=perspective(PI/3,W/H,.09,185);
+  camera={eye:flight.cameraEye,...look,vp:mm(projection,look.m)};return;
+ }
  if(flight.active){
   const b=flight.b,f=flyHeading();
   let desired,target;
@@ -1929,6 +1938,33 @@ function resize(){
  gl.viewport(0,0,canvas.width,canvas.height);
  updateCamera();draw();
 }
+const emuMesh=new Mesh();emuMesh.buffer=gl.createBuffer();
+function drawEmu(){
+ if(!emu)return;
+ emuMesh.data.length=0;
+ const root=[emu.x,emu.y,emu.z],head=emu.head;
+ const c=Math.cos(emu.heading),s=Math.sin(emu.heading);
+ function cube(p,half,col){
+  const [x,y,z]=p,[a,b,d]=half;
+  const A=[x-a,y-b,z-d],B=[x+a,y-b,z-d],C=[x+a,y+b,z-d],D=[x-a,y+b,z-d];
+  const E=[x-a,y-b,z+d],F=[x+a,y-b,z+d],G=[x+a,y+b,z+d],H=[x-a,y+b,z+d];
+  emuMesh.two(A,B,C,D,col);emuMesh.two(E,H,G,F,col);emuMesh.two(D,C,G,H,col);
+  emuMesh.two(A,E,F,B,col);emuMesh.two(A,D,H,E,col);emuMesh.two(B,F,G,C,col);
+ }
+ cube([root[0]+s*.018,root[1],root[2]+c*.018],[.045,.024,.067],[.66,.26,.22]);
+ tube(emuMesh,[[root[0],root[1]+.015,root[2]],head],[.016,.018],[.66,.62,.54],7);
+ cube(head,[.033,.028,.031],[.89,.80,.60]);
+ for(const leg of emu.legs()){
+  tube(emuMesh,[leg.hip,leg.knee],[.012,.009],[.73,.71,.63],7);
+  tube(emuMesh,[leg.knee,leg.foot],[.009,.007],[.68,.75,.82],7);
+  tube(emuMesh,[[leg.foot[0],leg.foot[1]-.012,leg.foot[2]],leg.foot],
+    [.019,.019],[.20,.44,.76],7);
+ }
+ emuMesh.count=emuMesh.data.length/10;
+ if(!emuMesh.count)return;
+ gl.useProgram(mp);gl.uniform1f(mu.land,0);gl.uniform3f(mu.flower,9999,9999,0);
+ uploadDynamic(emuMesh.buffer,emuMesh.data);emuMesh.draw();emuMesh.data.length=0;
+}
 function draw(){if(!W)return;updateCamera();gl.viewport(0,0,canvas.width,canvas.height);gl.clearColor(.5,.7,.8,1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.useProgram(sp);gl.bindBuffer(gl.ARRAY_BUFFER,skyquad);let q=gl.getAttribLocation(sp,'aQuad');gl.enableVertexAttribArray(q);gl.vertexAttribPointer(q,2,gl.FLOAT,false,0,0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,skyTex);gl.uniform1i(su.sky,0);gl.uniform1f(su.useImage,skySource==='procedural'?0:1);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,mountTex);gl.uniform1i(su.mount,1);gl.uniform3fv(su.right,camera.r);gl.uniform3fv(su.up,camera.u);gl.uniform3fv(su.forward,camera.f);gl.uniform1f(su.aspect,W/H);gl.uniform1f(su.tan,Math.tan(PI/6));gl.uniform1f(su.shift,landscape.skyShift);gl.uniform1f(su.relief,landscape.relief);gl.uniform1f(su.mountainHeight,landscape.mountainHeight);gl.uniform1f(su.midGap,landscape.midGap);gl.uniform1f(su.nearGap,landscape.nearGap);gl.uniform1f(su.valleyGap,landscape.valleyGap);gl.uniform1f(su.warmth,landscape.warmth);gl.uniform1f(su.frame,flight.active?0:frameShift());gl.drawArrays(gl.TRIANGLES,0,6);
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.useProgram(mp);gl.uniformMatrix4fv(mu.vp,false,camera.vp);gl.uniform1f(mu.t,time);gl.uniform1f(mu.wind,config.wind);gl.uniform3fv(mu.eye,camera.eye);gl.uniform1f(mu.drop,landscape.drop);gl.uniform1f(mu.haze,landscape.haze);gl.uniform1f(mu.warmth,landscape.warmth);gl.uniform1f(mu.edge,landscape.edge);gl.uniform1f(mu.sun,lighting.sunAngle*PI/180);gl.uniform1f(mu.power,lighting.sunPower);gl.uniform1f(mu.contrast,lighting.contrast);gl.uniform1f(mu.blue,lighting.blueFill);
@@ -1937,7 +1973,7 @@ function draw(){if(!W)return;updateCamera();gl.viewport(0,0,canvas.width,canvas.
  const touch=seated||touched;
  const pressure=seated?.32:touched?Math.min(1,(flowerTouch.until-time)*1.45):0;
  gl.uniform3f(mu.flower,touch?touch.x:9999,touch?touch.z:9999,pressure);
- gl.uniform1f(mu.land,1);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);land.draw();gl.disable(gl.BLEND);drawTreeShadow();gl.useProgram(mp);gl.uniform1f(mu.land,0);foliage.draw();fruit.draw();blossoms.draw();drawSwing();drawNectar();drawAirLife();drawRaces();drawBugs();drawLizard()
+ gl.uniform1f(mu.land,1);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);land.draw();gl.disable(gl.BLEND);drawTreeShadow();gl.useProgram(mp);gl.uniform1f(mu.land,0);foliage.draw();fruit.draw();blossoms.draw();drawSwing();drawNectar();drawAirLife();drawRaces();drawBugs();drawLizard();drawEmu()
 }
 function setPaused(p){paused=p;$('pause').setAttribute('aria-pressed',String(p));$('pause').title=p?'Resume animation':'Pause animation';$('pauseIcon').innerHTML=p?'<path d="M8 5v14l11-7z"/>':'<path d="M8 5v14M16 5v14"/>'}
 $('pause').onclick=()=>setPaused(!paused);
@@ -1972,6 +2008,7 @@ canvas.onlostpointercapture=releaseOrbit;
 canvas.addEventListener('wheel',e=>{if(flight.active)return;e.preventDefault();radius=clamp(radius+Math.sign(e.deltaY)*1.15,9,42);saveCamera();draw()},{passive:false});
 function flightKey(e,isDown){
  if(!flight.active)return false;
+ if(emuRiding&&isDown&&(e.code==='Space'||e.key===' ')){e.preventDefault();dismountEmu();return true;}
  const key=e.code==='Space'||e.key===' '?'space':(e.key||'').toLowerCase();
  if(['w','a','s','d','space'].includes(key)){
   // Do not intercept keys while typing in another form control.
@@ -1994,13 +2031,15 @@ function tick(ms){
  requestAnimationFrame(tick);resize();if(hidden||paused)return;
  if(ms-lastFrame<1000/(flight.active?(W<650?30:45):(W<650?20:24)))return;
  const dt=Math.min((ms-lastFrame)/1000,.055);lastFrame=ms;time+=dt;
- evolve(dt,time);stepSwing(dt,time);stepFlight(dt);stepPollen(dt);stepAirLife(dt);draw();
+ evolve(dt,time);stepSwing(dt,time);stepEmu(dt);stepFlight(dt);stepPollen(dt);stepAirLife(dt);draw();
 }
 setPaused(paused);resize();requestAnimationFrame(tick);
 // Dedicated standalone pilot URL, for mobile browsers that restrict iframe fullscreen.
 if(new URLSearchParams(location.search).has('pilot'))beginFlight();
 window.__meadowFlight={start:beginFlight,stop:endFlight,state:()=>({active:flight.active,tilt:{enabled:tilt.enabled,ready:tilt.ready,bank:tilt.bank,pitch:tilt.pitch,angle:tilt.angle},joystick:{x:joystick.x,y:joystick.y},fullscreen:!!document.fullscreenElement,pos:flight.b?.pos.slice(),speed:flight.speed,gamma:flight.gamma,verticalSpeed:flight.vs,mode:flight.mode,stalled:flight.stalled,aoa:flight.aoa,lift:flight.lift,drag:flight.drag,heading:flight.b?.heading,nectar:flight.nectar,flaps:flight.flapCount,energy:flight.b?.energy,landed:flight.landed,perchedOnFlower:!!flight.perchFlower,perch:flight.perch?.type||null,safe:flight.landed&&!vulnerablePerch(flight.perch),catches:flight.catches,availableNectar:flowers.filter((f,i)=>f.nectar&&!flight.visit.has(i)).length,race:{mode:race.mode,course:race.course,index:race.index,total:race.gates.length,elapsed:race.elapsed,penalty:race.penalty,scoredTime:race.elapsed+race.penalty,sinceGate:race.sinceGate,boostTime:race.boostTime,best:race.best,next:race.mode==='running'?race.gates[race.index]?.pos:race.mode==='idle'?RACE_START:null,choices:race.choices.map(g=>({name:g.name,pos:g.pos}))}})};
-window.__meadowStep=(seconds)=>{let count=Math.ceil(seconds/.05);for(let i=0;i<count;i++){time+=.05;evolve(.05,time);stepSwing(.05,time);stepFlight(.05);stepPollen(.05);stepAirLife(.05)}draw()};
+window.__meadowStep=(seconds)=>{let count=Math.ceil(seconds/.05);for(let i=0;i<count;i++){time+=.05;evolve(.05,time);stepSwing(.05);stepEmu(.05);stepFlight(.05);stepPollen(.05);stepAirLife(.05)}draw()};
+window.__meadowEmu={state:()=>({loaded:!!emu,riding:emuRiding,loading:emuLoading,
+  pose:emu?.pose||null,rock:{...EMU_ROCK}}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
 window.__meadowDiagnostics=()=>({cameraSettings:{...cameraSettings},render:'webgl',lizardConfig:{...lizardConfig},lizardStrokeCount:lizardLines.length,landscape:{...landscape},lighting:{...lighting},groundTriangles:Math.round(land.count/3),leaves:Math.round(foliage.count/6),apples:Math.round(fruit.count/270),swingAngle:swingState.angle,swingLength:ropeLength,skybox:skySource!=='procedural',skyboxSource:skySource,skyboxStatus:skyStatus,skyLoadAttempts:[...skyLoadAttempts],skyboxURL:SKYBOX_URL,skyboxTextureComplete:gl.isTexture(skyTex),fairyDoor:true,doorScale:.27,scenery:{...sceneryCounts},nectarFlowers:flowers.filter(f=>f.nectar).length,perchSites:perchSites.length,rockCollisionSurfaces:rockSurfaces.length,visiblePollen:pollen.length,ambientMotes:ambientMotes.length,fallingLeaves:fallingLeaves.length,groundLeaves:GROUND_LEAF_COUNT,leafSources:leafSources.length,flightCatches:flight.catches,camera:{turn,elev,radius},butterflies:bugs.slice(0,config.count).map(b=>({x:b.pos[0],y:b.pos[1],z:b.pos[2],state:b.state,intent:b.intent,tourStops:b.tourStops,target:[...b.target],mode:b.mode,vel:b.vel,pitch:b.pitch,bank:b.bank,aoa:b.aoa,speed:b.speed,energy:b.energy,wingPhase:b.phase,altitude:b.pos[1]-height(b.pos[0],b.pos[2])}))});
 })();
 </script><script>
