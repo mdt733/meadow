@@ -50,9 +50,14 @@ test('autonomous navigator pursues the lizard without touching the flight contro
  assert.ok(robot.pose);
 });
 
-test('main Meadow loads the EMU payload only after a deliberate rock interaction',()=>{
+test('main Meadow keeps the EMU actor lazy, with direct launch and a square rock alternative',()=>{
  const html=readFileSync(new URL('../meadow.html',import.meta.url),'utf8');
  assert.match(html,/const EMU_ROCK=/);
+ assert.match(html,/id="emuStart"/);
+ assert.match(html,/id="flyStart"/);
+ assert.match(html,/addEmuCubeRock\(\)/);
+ assert.match(html,/async function startRobotRide\(\)/);
+ assert.match(html,/\$\('emuStart'\)\.onclick=startRobotRide/);
  assert.match(html,/emuWake:true|emuWake=|emuWake:rock\.emuWake===true/);
  assert.match(html,/import\('\.\/emu\/emu\.js'\)/);
  assert.match(html,/emu\.autopilot/);
