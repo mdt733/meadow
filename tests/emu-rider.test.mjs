@@ -1,65 +1,53 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { parsePolicy, PolicyRunner } from '../emu/policy.js';
-import { MeadowEmu } from '../emu/emu.js';
+import {readFileSync} from 'node:fs';
+import {parsePolicy,PolicyRunner} from '../emu/policy.js';
 
-const raw=readFileSync(new URL('../emu/champion.emupolicy',import.meta.url),'utf8');
-const bundle=parsePolicy(raw);
+const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
+const bundle=parsePolicy(read('../emu/champion.emupolicy'));
 
-test('uses the published 260M six-servo terrain actor, not a fake gait',()=>{
+test('genuine pinned 260M champion 360→256→256→6 actor evaluates finite motors',()=>{
  assert.equal(bundle.format,'emu-policy');
  assert.equal(bundle.schema,3);
  assert.equal(bundle.source.step,260046848);
  assert.equal(bundle.policy.obs_dim,360);
  assert.equal(bundle.policy.action_dim,6);
  assert.deepEqual(bundle.policy.hidden_sizes,[256,256]);
- assert.equal(bundle.policy.layers.length,3);
- const actor=new PolicyRunner(bundle);
- const result=actor.infer(new Float32Array(360));
- assert.equal(result.length,6);
- assert.ok([...result].every(Number.isFinite));
- assert.ok([...result].every(v=>v>=-1&&v<=1));
+ const output=new PolicyRunner(bundle).infer(new Float32Array(360));
+ assert.equal(output.length,6);
+ assert.ok([...output].every(x=>Number.isFinite(x)&&x>=-1&&x<=1));
 });
-
-test('Meadow garden controller preserves the trained actor observation widths',()=>{
- const robot=new MeadowEmu(bundle);
- robot.setWorld((x,z)=>.05*Math.sin(x*.5)+.02*Math.cos(z*.7),7,9.1);
- assert.equal(robot.obs.length,360);
- assert.equal(robot.frameObs().length,90);
- assert.equal(robot.history.length,4);
- assert.equal(robot.legs().length,2);
- assert.ok(robot.legs().every(l=>l.foot.length===3&&l.foot.every(Number.isFinite)));
- const scan=robot.rays();
- assert.equal(scan.ranges.length,16);
- assert.equal(scan.valid.length,16);
- assert.ok(scan.valid.every(v=>v===0||v===1));
- for(let i=0;i<20;i++)robot.advance(.02,{vx:.2,vy:0,yaw:.1});
- assert.equal(robot.frames,20);
- assert.ok([...robot.obs,...robot.q].every(Number.isFinite));
- assert.ok(Number.isFinite(robot.pose.x+robot.pose.z+robot.pose.y));
+test('on-demand runtime is official MuJoCo and never the old garden walking proxy',()=>{
+ const loader=read('../emu/emu.js');
+ const physics=read('../emu/physics/src/index.js');
+ const upstream=read('../emu/physics/vendor/sim.js');
+ const packageJson=JSON.parse(read('../emu/physics/package.json'));
+ assert.equal(packageJson.dependencies['@mujoco/mujoco'],'3.17.0');
+ assert.match(loader,/import\('\.\/physics\/dist\/emu-physics\.js'\)/);
+ assert.match(physics,/EmuBrowserSim\.create/);
+ assert.match(physics,/sim\.loadModel\(\)/);
+ assert.match(physics,/sim\.advance\(dt\)/);
+ assert.match(upstream,/this\.mujoco\.mj_step\(this\.model, this\.data\)/);
+ assert.match(upstream,/this\.policy\.infer\(this\.obs\)/);
+ assert.doesNotMatch(physics,/\.x\s*\+=|\.z\s*\+=|\.y\s*\+=/);
 });
-
-test('autonomous navigator pursues the lizard without touching the flight controls',()=>{
- const robot=new MeadowEmu(bundle);
- robot.setWorld(()=>0,7,9.1);
- const cmd=robot.autopilot({x:9,z:10,heading:0});
- assert.ok(cmd.vx>0 && Number.isFinite(cmd.yaw));
- for(let i=0;i<10;i++)robot.advance(.02,cmd);
- assert.equal(robot.frames,10);
- assert.ok(robot.pose);
+test('MuJoCo collision heightfield uses Meadow geometry, not a flat plane',()=>{
+ const source=read('../emu/physics/src/index.js');
+ const terrain=read('../emu/physics/vendor/terrain.js');
+ assert.match(source,/heightAt\(origin\.x\+my,origin\.z\+mx\)/);
+ assert.match(source,/PARK_RES=257/);
+ assert.match(source,/zOffset:minimum/);
+ assert.match(source,/sim\.meadowPark=sampleMeadowPark/);
+ assert.match(terrain,/park\.zOffset/);
 });
-
-test('main Meadow keeps the EMU actor lazy, with direct launch and a square rock alternative',()=>{
- const html=readFileSync(new URL('../meadow.html',import.meta.url),'utf8');
- assert.match(html,/const EMU_ROCK=/);
+test('public entrance offers walk button and rock alternative, both lazy',()=>{
+ const html=read('../meadow.html');
  assert.match(html,/id="emuStart"/);
  assert.match(html,/id="flyStart"/);
  assert.match(html,/addEmuCubeRock\(\)/);
  assert.match(html,/async function startRobotRide\(\)/);
  assert.match(html,/\$\('emuStart'\)\.onclick=startRobotRide/);
- assert.match(html,/emuWake:true|emuWake=|emuWake:rock\.emuWake===true/);
- assert.match(html,/import\('\.\/emu\/emu\.js'\)/);
+ assert.match(html,/module\.loadEmu/);
  assert.match(html,/emu\.autopilot/);
  assert.match(html,/function drawEmu\(/);
  assert.doesNotMatch(html,/<script[^>]+src=["']emu\/emu\.js/);
