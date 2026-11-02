@@ -1,0 +1,25 @@
+name: EMU butterfly rider checks
+
+on:
+  push:
+    branches: [feature/emu-butterfly-rider]
+  pull_request:
+    paths:
+      - 'emu/**'
+      - 'meadow.html'
+      - 'ground-lizard.js'
+      - 'tests/**'
+
+jobs:
+  browser-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check emu/emu.js
+      - run: node --check emu/policy.js
+      - run: node --check ground-lizard.js
+      - run: node tests/check-inline.mjs
+      - run: node --test tests/emu-rider.test.mjs
