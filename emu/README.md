@@ -1,8 +1,14 @@
 # EMU butterfly rider (experimental)
 
-This is an optional Easter egg in Meadow. The base homepage does not fetch
-any EMU scripts, runtime or policy until a butterfly **lands on the deliberately
-asymmetric little rock near (x=7,z=9.1)** and the user chooses **Wake the little robot**.
+EMU is available directly from the **🤖 Walk the robot** button next to
+**🦋 Fly a butterfly** on the standalone Meadow page. No rock hunt required.
+
+The Easter egg remains: fly to the unmistakable **square teal rock with the
+golden diamond on top** near (x=7,z=9.1), land and choose **Wake the little
+robot**. It is a real collidable rock, not an invisible click target.
+
+The ordinary homepage does not fetch any EMU scripts, runtime or policy
+until either option is deliberately selected.
 
 - The 886,002-byte `champion.emupolicy` is copied from `mdt733/emu`,
   v5032 Pinnacle, 260,046,848 training steps. It includes the 360-input
@@ -42,13 +48,19 @@ Serve the repo with a real HTTP server (ES modules and fetch cannot run from
 
 ```bash
 python3 -m http.server 8000
-# http://localhost:8000/meadow.html?pilot=1
+# http://localhost:8000/meadow.html
 node tests/check-inline.mjs
 node --test tests/emu-rider.test.mjs
 ```
 
-Open Butterfly flight and land on the unusual rock near the initial flight
-spawn. No other rock should show the activation prompt. On mobile use the
-touch stick to pilot and the Fly away control to dismount.
+Choose **Walk the robot** from the regular Meadow homepage; loading then
+automatically puts the butterfly on EMU's head. The alternate discovery path
+uses the square rock. For a shortcut straight to the rock landing, open
+`http://localhost:8000/meadow.html?emu-demo=1`.
+
+On mobile, use the touch stick to pilot and **Fly away** to dismount. On
+embedded Meadow pages the buttons remain hidden, like the existing butterfly
+button; the parent can request a robot ride via the same-origin
+`postMessage({type:'meadow-emu-start'}, location.origin)` event.
 
 **This entire feature lives on `feature/emu-butterfly-rider`; `main` is unchanged.**
