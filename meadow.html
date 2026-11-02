@@ -1351,11 +1351,10 @@ async function startRobotRide(){
  $('emuProgress').value=0;$('emuLoadStatus').textContent='Loading the champion brain';
  try{
   const module=await import('./emu/emu.js');
-  emu=await module.loadEmu(p=>{
+  emu=await module.loadEmu((p,stage)=>{
    $('emuProgress').value=p;
-   $('emuLoadStatus').textContent=p<1?'Downloading the trained actor · '+Math.round(p*100)+'%':'Preparing six little servos…';
-  });
-  emu.setWorld(height,EMU_ROCK.x+1,EMU_ROCK.z);
+   $('emuLoadStatus').textContent=stage||'Starting physical simulation…';
+  },height,{x:EMU_ROCK.x+1,z:EMU_ROCK.z});
   mountEmu();
  }catch(error){
   console.error('Unable to wake EMU:',error);
@@ -1443,7 +1442,7 @@ function stepFlight(dt){
   $('flyAltitude').textContent=(emu.y-height(emu.x,emu.z)).toFixed(2);
   $('flyVertical').textContent='0.0';$('flyMode').textContent='EMU RIDER';
   $('flyNectar').textContent=flight.nectar;$('flyEnergy').style.width='100%';
-  $('flyAlert').textContent='260M champion · real actor, lightweight garden physics proxy · falls '+emu.falls;
+  $('flyAlert').textContent='260M champion · MuJoCo 3.17 physical contacts · frames '+emu.pose.frames+' · falls '+emu.falls;
   return;
  }
  const b=flight.b,k=flight.keys,c=FLY;
@@ -1790,7 +1789,10 @@ function drawBugs(){butterflyData.length=0;
   let right0=[Math.cos(h),0,-Math.sin(h)],up0=[-Math.sin(h)*Math.sin(pch),Math.cos(pch),-Math.cos(h)*Math.sin(pch)];
   let right=add(mul(right0,Math.cos(bank)),mul(up0,Math.sin(bank)));
   let up=sub(mul(up0,Math.cos(bank)),mul(right0,Math.sin(bank)));
-  function tx(x,y,z){return add(p,add(mul(right,x*BUTTERFLY_VISUAL_SCALE),add(mul(up,y*BUTTERFLY_VISUAL_SCALE),mul(forward,z*BUTTERFLY_VISUAL_SCALE))))}
+  function tx(x,y,z){
+   const scale=BUTTERFLY_VISUAL_SCALE*(emuRiding&&i===config.count?.29:1);
+   return add(p,add(mul(right,x*scale),add(mul(up,y*scale),mul(forward,z*scale))))
+  }
   let flap=b.mode==='flap'?Math.sin(b.phase)*1.04: .18+Math.sin(b.phase)*.035;
   if(b.state==='perched')flap=i===config.count?.99:.8+Math.sin(b.phase)*.045;
   let hi=b.col,edge=hi.map(a=>a*.52),spot=[.98,.94,.78],under=hi.map(a=>a*.85);
@@ -1940,7 +1942,7 @@ function updateCamera(){
  if(flight.active&&emuRiding&&emu){
   const h=emu.heading,p=emu.head;
   const target=[p[0],p[1]-.045,p[2]];
-  const desired=[p[0]-Math.sin(h)*1.8,p[1]+.80,p[2]-Math.cos(h)*1.8];
+  const desired=[p[0]-Math.sin(h)*1.15,p[1]+.55,p[2]-Math.cos(h)*1.15];
   desired[1]=Math.max(desired[1],height(desired[0],desired[2])+.4);
   flight.cameraEye=flight.cameraEye?flight.cameraEye.map((x,i)=>lerp(x,desired[i],.17)):desired;
   const look=viewMatrix(flight.cameraEye,target),projection=perspective(PI/3,W/H,.09,185);
@@ -1984,24 +1986,27 @@ const emuMesh=new Mesh();emuMesh.buffer=gl.createBuffer();
 function drawEmu(){
  if(!emu)return;
  emuMesh.data.length=0;
- const root=[emu.x,emu.y,emu.z],head=emu.head;
- const c=Math.cos(emu.heading),s=Math.sin(emu.heading);
- function cube(p,half,col){
-  const [x,y,z]=p,[a,b,d]=half;
-  const A=[x-a,y-b,z-d],B=[x+a,y-b,z-d],C=[x+a,y+b,z-d],D=[x-a,y+b,z-d];
-  const E=[x-a,y-b,z+d],F=[x+a,y-b,z+d],G=[x+a,y+b,z+d],H=[x-a,y+b,z+d];
-  emuMesh.two(A,B,C,D,col);emuMesh.two(E,H,G,F,col);emuMesh.two(D,C,G,H,col);
-  emuMesh.two(A,E,F,B,col);emuMesh.two(A,D,H,E,col);emuMesh.two(B,F,G,C,col);
+ // All these vertices come from MuJoCo's physically simulated body positions,
+ // including torso attitude, knee hinges, passive shin flex and ball feet.
+ // Nothing is posed by an animator or by the joystick.
+ const [a,b,c,d,e,f,g,h]=emu.torso;
+ const red=[.77,.24,.24],top=[.91,.43,.32],side=[.58,.19,.21];
+ emuMesh.two(a,b,c,d,red);
+ emuMesh.two(e,h,g,f,top);
+ emuMesh.two(a,e,f,b,side);emuMesh.two(d,c,g,h,top);
+ emuMesh.two(b,f,g,c,red);emuMesh.two(a,d,h,e,side);
+ for(const leg of emu.limbs){
+  const [hip,knee,middle,foot]=leg;
+  tube(emuMesh,[hip,knee],[.009,.008],[.63,.67,.73],8);
+  tube(emuMesh,[knee,middle],[.008,.007],[.73,.73,.69],8);
+  tube(emuMesh,[middle,foot],[.007,.007],[.62,.72,.79],8);
+  const ball=foot.map((v,i)=>i===1?v-.012:v);
+  tube(emuMesh,[ball,foot],[.018,.018],[.25,.43,.83],9);
  }
- cube([root[0]+s*.018,root[1],root[2]+c*.018],[.045,.024,.067],[.66,.26,.22]);
- tube(emuMesh,[[root[0],root[1]+.015,root[2]],head],[.016,.018],[.66,.62,.54],7);
- cube(head,[.033,.028,.031],[.89,.80,.60]);
- for(const leg of emu.legs()){
-  tube(emuMesh,[leg.hip,leg.knee],[.012,.009],[.73,.71,.63],7);
-  tube(emuMesh,[leg.knee,leg.foot],[.009,.007],[.68,.75,.82],7);
-  tube(emuMesh,[[leg.foot[0],leg.foot[1]-.012,leg.foot[2]],leg.foot],
-    [.019,.019],[.20,.44,.76],7);
- }
+ // Tiny butterfly perch; the only decorative robot component, mounted at the
+ // real torso pose. No gigantic extra robot head from the previous prototype.
+ const perch=emu.head,torso=emu.locationOf('torso');
+ tube(emuMesh,[torso,perch],[.012,.008],[.85,.74,.52],7);
  emuMesh.count=emuMesh.data.length/10;
  if(!emuMesh.count)return;
  gl.useProgram(mp);gl.uniform1f(mu.land,0);gl.uniform3f(mu.flower,9999,9999,0);
