@@ -8,9 +8,11 @@ const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 const BODIES=['torso','r_hip','r_shin','r_shin_lower','r_foot','l_hip','l_shin','l_shin_lower','l_foot'];
 const PARK_RADIUS=15.5,PARK_RES=257;
 
-// Converts MuJoCo right-handed X-forward/Y-left/Z-up into Meadow's X-side/Y-up/Z-forward.
+// MuJoCo: +X forward, +Y LEFT, +Z up. Meadow: +Z forward,
+// +X RIGHT, +Y up. The lateral axis MUST be negated. Otherwise the
+// geometry, navigation and keys all disagree about "right".
 function worldCoords(origin,mj){
- return [origin.x + mj[1],origin.height + mj[2],origin.z + mj[0]];
+ return [origin.x - mj[1],origin.height + mj[2],origin.z + mj[0]];
 }
 
 export function sampleMeadowPark(heightAt,origin){
@@ -23,7 +25,7 @@ export function sampleMeadowPark(heightAt,origin){
  const centre=heightAt(origin.x,origin.z);
  for(let j=0;j<resolution;j++)for(let i=0;i<resolution;i++){
   const mx=-radius+i*cell,my=-radius+j*cell;
-  const h=heightAt(origin.x+my,origin.z+mx)-centre;
+  const h=heightAt(origin.x-my,origin.z+mx)-centre;
   raw[j*resolution+i]=h;
   minimum=Math.min(minimum,h);maximum=Math.max(maximum,h);
  }
@@ -74,9 +76,9 @@ export class PhysicalMeadowEmu {
  get pose(){
   const s=this.sim,nav=s.navigationPose(),actual=s.telemetry();
   return {
-   x:this.origin.x+nav.y,z:this.origin.z+nav.x,
+   x:this.origin.x-nav.y,z:this.origin.z+nav.x,
    y:this.origin.height+s.heightM(),
-   heading:nav.heading,vx:actual.vx,vy:actual.vy,
+   heading:-nav.heading,vx:actual.vx,vy:actual.vy,
    frames:s.controlFrames,falls:this.falls,fallen:actual.fallen,
    motorTravelRad:s.motorTravelRad,
    physics:'MuJoCo WASM',actor:'v5032 Pinnacle 260M'
@@ -92,7 +94,7 @@ export class PhysicalMeadowEmu {
   const R=this.sim.bodyRotation();
   // Original model has only a torso box; a tiny butterfly perch is visually
   // attached to the MuJoCo torso orientation, NOT a predicted animator pose.
-  return [torso[0]+R[5]*.055,torso[1]+R[8]*.055,torso[2]+R[2]*.055];
+  return [torso[0]-R[5]*.055,torso[1]+R[8]*.055,torso[2]+R[2]*.055];
  }
  get limbs(){
   const legs=[];
@@ -107,7 +109,7 @@ export class PhysicalMeadowEmu {
  get torso(){
   const sim=this.sim,R=sim.bodyRotation(),p=this.locationOf('torso');
   const transform=(x,y,z)=>[
-   p[0]+R[3]*x+R[4]*y+R[5]*z,
+   p[0]-R[3]*x-R[4]*y-R[5]*z,
    p[1]+R[6]*x+R[7]*y+R[8]*z,
    p[2]+R[0]*x+R[1]*y+R[2]*z
   ];
@@ -125,7 +127,7 @@ export class PhysicalMeadowEmu {
   const d=Math.hypot(dx,dz),error=wrap(Math.atan2(dx,dz)-p.heading);
   // Navigation commands only; all actual movement remains under the actor.
   return {vx:Math.abs(error)>1.35?.04:clamp((d-1.0)*.16,0,.24),
-          vy:0,yaw:clamp(error*1.3,-.85,.85)};
+          vy:0,yaw:-clamp(error*1.3,-.85,.85)};
  }
  advance(dt,command){
   this.elapsed+=dt;
