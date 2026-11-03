@@ -11,6 +11,7 @@ export default defineConfig({
     assetsInlineLimit:0,
     minify:'esbuild',
     rollupOptions:{
+      preserveEntrySignatures:'strict',
       input:path('./src/index.js'),
       output:{
         entryFileNames:'emu-physics.js',
