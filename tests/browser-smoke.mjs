@@ -47,10 +47,18 @@ try{
  assert.equal(state.pose.physics,'MuJoCo WASM','must be actual rigid-body physics');
  assert.ok(Number.isFinite(state.pose.y));
  await page.keyboard.down('w');
- await page.waitForTimeout(1600);
+ // Deterministic physics stepping avoids tying the test to SwiftShader's
+ // variable CPU render FPS. The website still uses its normal RAF in play.
+ const measure=await page.evaluate(()=>{
+  const before=window.__meadowEmu.state().pose,started=performance.now();
+  window.__meadowStep(.6);
+  return {before,after:window.__meadowEmu.state().pose,wallMs:performance.now()-started};
+ });
  await page.keyboard.up('w');
- const moving=await page.evaluate(()=>window.__meadowEmu.state().pose);
- assert.ok(moving.frames>state.pose.frames+15,'MuJoCo and actor must keep stepping');
+ const moving=measure.after;
+ console.log('MuJoCo physical stepping benchmark:',JSON.stringify(measure));
+ await page.screenshot({path:'artifacts/emu-mujoco-servo-motion.png'});
+ assert.ok(moving.frames>measure.before.frames+15,'MuJoCo and actor must keep stepping');
  assert.ok(moving.motorTravelRad>0.01,'actual servo joints must move');
  assert.ok(Number.isFinite(moving.x+moving.y+moving.z),'physical root position must stay finite');
  console.log('Physical EMU telemetry:',moving);
