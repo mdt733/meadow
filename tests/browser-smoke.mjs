@@ -20,13 +20,23 @@ try{
  assert.equal(requests.length,0,'EMUs large actor must NOT download before activation');
  await page.screenshot({path:'artifacts/emu-walk-button.png'});
  await page.locator('#emuStart').click();
- await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:45000});
+ await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:90000});
  await page.waitForFunction(()=>window.__meadowEmu?.state().pose?.frames>5,null,{timeout:15000});
  let state=await page.evaluate(()=>window.__meadowEmu.state());
  assert.equal(requests.length,1,'Actor is downloaded exactly once on opt in');
  assert.equal(state.loaded,true);
  assert.equal(state.riding,true);
  assert.ok(state.pose.frames>5);
+ assert.equal(state.pose.physics,'MuJoCo WASM','must be actual rigid-body physics');
+ assert.ok(Number.isFinite(state.pose.y));
+ await page.keyboard.down('w');
+ await page.waitForTimeout(1600);
+ await page.keyboard.up('w');
+ const moving=await page.evaluate(()=>window.__meadowEmu.state().pose);
+ assert.ok(moving.frames>state.pose.frames+15,'MuJoCo and actor must keep stepping');
+ assert.ok(moving.motorTravelRad>0.01,'actual servo joints must move');
+ assert.ok(Number.isFinite(moving.x+moving.y+moving.z),'physical root position must stay finite');
+ console.log('Physical EMU telemetry:',moving);
  assert.equal(await page.locator('#emuLeave').isVisible(),true);
  assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly riding EMU');
  await page.screenshot({path:'artifacts/emu-butterfly-rider.png'});
@@ -54,7 +64,7 @@ try{
  assert.equal(await page.locator('#emuStart').isVisible(),false,'entry controls hidden in pilot mode');
  await page.screenshot({path:'artifacts/emu-square-rock.png'});
  await page.locator('#emuWake').click();
- await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:45000});
+ await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:90000});
  assert.deepEqual(errors,[],errors.join('\n'));
  console.log('EMU direct-launch and rock-landing browser smoke passed.');
 }finally{await browser.close()}
