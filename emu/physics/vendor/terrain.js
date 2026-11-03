@@ -219,7 +219,7 @@ function parkXml(park) {
   const asset=`<hfield name="viewer_park_hfield" nrow="${resolution}" ncol="${resolution}"
     size="${radius} ${radius} ${rounded(maxHeight)} 0.20"
     elevation="${elevations.join(' ')}" />`;
-  const terrain='<geom name="viewer_park_ground" type="hfield" hfield="viewer_park_hfield" pos="0 0 ${rounded(park.zOffset||0)}" friction="1.5 0.005 0.0001" rgba="0.31 0.53 0.25 1" />';
+  const terrain='<geom name="viewer_park_ground" type="hfield" hfield="viewer_park_hfield" pos="0 0 '+rounded(park.zOffset||0)+'" friction="1.5 0.005 0.0001" rgba="0.31 0.53 0.25 1" />';
   const trunks=trees.map((t,i)=>`<geom name="viewer_tree_trunk_${i}" type="cylinder"
     pos="${rounded(t.x)} ${rounded(t.y)} ${rounded(t.z+t.trunkHeight/2)}"
     size="${rounded(t.trunkRadius)} ${rounded(t.trunkHeight/2)}"
