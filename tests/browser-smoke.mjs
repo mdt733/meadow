@@ -46,6 +46,29 @@ try{
  assert.ok(state.pose.frames>5);
  assert.equal(state.pose.physics,'MuJoCo WASM','must be actual rigid-body physics');
  assert.ok(Number.isFinite(state.pose.y));
+ assert.ok(Math.hypot(state.pose.x-state.clearing.x,state.pose.z-state.clearing.z)<1,
+   'robot must start in the outer clearing, not on the hill');
+ const clearing=await page.evaluate(()=>{
+  const c=window.__meadowEmu.state().clearing,h=window.__meadowWorld.height;
+  const at=(dx,dz)=>h(c.x+dx,c.z+dz);
+  return {centre:at(0,0),around:[[3,0],[-3,0],[0,3],[0,-3],[2,2]]
+   .map(([dx,dz])=>at(dx,dz))};
+ });
+ assert.ok(clearing.around.every(v=>Math.abs(v-clearing.centre)<1e-5),
+   'the entire central flat physical patch must be level');
+ await page.keyboard.down('d');
+ await page.evaluate(()=>window.__meadowStep(.1));
+ assert.ok((await page.evaluate(()=>window.__meadowEmu.state().commandYaw))<-.1,
+   'D/right must request negative MuJoCo yaw, like the official viewer');
+ await page.keyboard.up('d');
+ await page.keyboard.down('a');
+ await page.evaluate(()=>window.__meadowStep(.1));
+ assert.ok((await page.evaluate(()=>window.__meadowEmu.state().commandYaw))>.1,
+   'A/left must request positive MuJoCo yaw');
+ await page.keyboard.up('a');
+ const rig=await page.evaluate(()=>window.__meadowEmu.state().cameraRig);
+ assert.ok(rig&&Number.isFinite(rig.x+rig.y+rig.z+rig.heading),
+   'third-person ride must use the independent smoothed camera rig');
  await page.keyboard.down('w');
  // Deterministic physics stepping avoids tying the test to SwiftShader's
  // variable CPU render FPS. The website still uses its normal RAF in play.
