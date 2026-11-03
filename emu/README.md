@@ -18,10 +18,10 @@ EMU as an Easter egg. `?emu-demo=1` starts already perched on that rock.
 - Real physics terrain: a **257×257 collision heightfield**, covering 31m
   edge-to-edge, sampled from Meadow's existing procedural `height(x,z)`.
   The rendered robot pose, leg link endpoints, butterfly perch and navigation
-  use MuJoCo's actual body positions. A small *visibly levelled clearing* near
-  x=9.8,z=9.1 makes a sane starting patch; both the visual mesh and physical
-  heightfield sample that exact same shape. The previous rockside spawn was
-  a steep ~14° slope and caused immediate falls.
+  use MuJoCo's actual body positions. A broad **9m-wide flat central clearing** near
+  x=22,z=7, beyond the main hill, makes a much easier starting patch; both
+  the visual mesh and physical heightfield sample that exact same shape.
+  The edge blends gradually back into the natural meadow over 2.5m.
 - The simulation and neural policy run entirely in the visitor's browser,
   without JAX, Python or a running GPU training server.
 
@@ -38,6 +38,20 @@ The browser viewer's sensor model is inherited from EMU and the physical
 heightfield approximation is close but not perfectly identical to the
 high-resolution rendered mesh. This is physics-based interaction, not
 an official EMU physical evaluation result.
+
+
+## Rider controls and camera
+
+- W/S: forward/back; A/D and horizontal mobile joystick: physically correct
+  left/right yaw, matched to EMU's official viewer (-yaw for right).
+- The MuJoCo-to-Meadow conversion correctly mirrors the **lateral axis**
+  (MuJoCo +Y means **left**); the robot, camera, terrain hfield and autonomous
+  heading calculations all use the same convention.
+- Third-person camera orientation and target follow independent,
+  frame-rate-aware exponential smoothing; its vertical target is taken from
+  **ground plus 21cm**, not the moving torso or butterfly. This deliberately
+  smooths the picture without modifying physical motion, policies or sensors.
+- Space/Fly away: dismount; Exit: leave robot following the lizard.
 
 ## Local playtest
 
