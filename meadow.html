@@ -99,6 +99,7 @@ html.tilt-steering .fly-joystick{display:none}
 <script>(()=>{'use strict';
 const $=id=>document.getElementById(id), canvas=$('scene');
 let emu=null,emuRiding=false,emuLoading=false;
+let emuCameraRig=null; // purely visual smoothing; never feeds the policy
 const originalFlightInstructions=$('flyInstructions').textContent;
 const gl=canvas.getContext('webgl',{alpha:false,antialias:true,powerPreference:'low-power',depth:true,preserveDrawingBuffer:false});
 if(!gl){$('webgl-fallback').style.display='grid';return}
@@ -107,14 +108,14 @@ let seed=221107;function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;
 const range=(a,b)=>a+random()*(b-a);
 const v=(x=0,y=0,z=0)=>[x,y,z],add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],len=a=>Math.hypot(...a),norm=a=>mul(a,1/Math.max(.00001,len(a)));
 function naturalHeight(x,z){let d2=x*x+z*z;return 3.75*Math.exp(-d2/118)+.14*Math.sin(x*.22+z*.09)+.19*Math.cos(z*.18-x*.14)+.42*Math.exp(-((x+30)**2+(z-28)**2)/320)+.36*Math.exp(-((x-31)**2+(z+21)**2)/600)}
-// The biped has a small, physically real level clearing. Both Meadow's
-// visual ground AND MuJoCo's hfield sample this identical function.
-// The rest of the sloping meadow retains its original terrain.
-const EMU_CLEARING={x:9.8,z:9.1};
+// Start EMU out beyond the main hill rather than on its shoulder. This broad,
+// gently blended clearing is rendered by Meadow AND sampled by MuJoCo's real
+// collision hfield; no invisible plane and no alteration to neural physics.
+const EMU_CLEARING={x:22,z:7};
 const EMU_CLEARING_HEIGHT=naturalHeight(EMU_CLEARING.x,EMU_CLEARING.z);
 function height(x,z){
  const natural=naturalHeight(x,z),d=Math.hypot(x-EMU_CLEARING.x,z-EMU_CLEARING.z);
- const t=clamp((d-1.25)/1.65,0,1),blend=t*t*(3-2*t);
+ const t=clamp((d-4.5)/2.5,0,1),blend=t*t*(3-2*t);
  return EMU_CLEARING_HEIGHT*(1-blend)+natural*blend;
 }
 function compile(type,src){let s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s}
@@ -1329,7 +1330,7 @@ function showEmuRockPrompt(site){
 function mountEmu(){
  if(!emu||!flight.active)return;
  emuRiding=true;flight.landed=false;flight.perch=null;flight.perchFlower=null;
- flight.keys=Object.create(null);resetJoystick();flight.cameraEye=null;flight.lookYaw=0;
+ flight.keys=Object.create(null);resetJoystick();flight.cameraEye=null;emuCameraRig=null;flight.lookYaw=0;
  $('emuWake').hidden=true;$('emuLeave').hidden=false;
  $('flyHudTitle').textContent='Butterfly riding EMU';
  document.querySelector('.fly-flap').textContent='HOP OFF 🦋';
@@ -1338,7 +1339,7 @@ function mountEmu(){
 }
 function dismountEmu(toFlight=true){
  if(!emuRiding)return;
- emuRiding=false;$('emuLeave').hidden=true;resetJoystick();flight.keys=Object.create(null);
+ emuRiding=false;emuCameraRig=null;$('emuLeave').hidden=true;resetJoystick();flight.keys=Object.create(null);
  $('flyInstructions').textContent=originalFlightInstructions;
  $('flyHudTitle').textContent='Butterfly flight';
  document.querySelector('.fly-flap').textContent='FLAP 🦋';
@@ -1386,7 +1387,9 @@ function stepEmu(dt){
   if(k.space){dismountEmu();return;}
   const forward=clamp((k.w?1:0)-(k.s?1:0)+joystick.y,-1,1);
   const steering=clamp((k.d?1:0)-(k.a?1:0)+joystick.x,-1,1);
-  command={vx:forward*.27,vy:0,yaw:steering};
+  // EMU's original viewer maps screen-right joystick to NEGATIVE yaw.
+  // Do not flip camera axes or invert the robot's physical heading to cheat.
+  command={vx:forward*.27,vy:0,yaw:-steering};
  }else command=emu.autopilot(window.__meadowWorld?.getLizard?.());
  emu.advance(dt,command);
  if(emuRiding&&flight.b){
@@ -1950,13 +1953,31 @@ function frameShift(){return landscape.framing*(W<680?.42:1)}
 // ── Camera, WebGL frame and input loop ──
 function updateCamera(){
  if(flight.active&&emuRiding&&emu){
-  const h=emu.heading,p=emu.head;
-  const target=[p[0],p[1]-.045,p[2]];
-  const desired=[p[0]-Math.sin(h)*1.15,p[1]+.55,p[2]-Math.cos(h)*1.15];
-  desired[1]=Math.max(desired[1],height(desired[0],desired[2])+.4);
-  flight.cameraEye=flight.cameraEye?flight.cameraEye.map((x,i)=>lerp(x,desired[i],.17)):desired;
-  const look=viewMatrix(flight.cameraEye,target),projection=perspective(PI/3,W/H,.09,185);
-  camera={eye:flight.cameraEye,...look,vp:mm(projection,look.m)};return;
+  // Smooth camera TRACKING only; the robot, its limbs and its physical IMU
+  // remain unsmoothed MuJoCo output. Never aim at the bobbing torso/head.
+  const p=emu.pose,now=performance.now();
+  const ground=height(p.x,p.z);
+  const stableAimY=ground+.21;
+  let rig=emuCameraRig;
+  if(!rig || Math.hypot(p.x-rig.x,p.z-rig.z)>3.2){
+   rig=emuCameraRig={x:p.x,z:p.z,y:stableAimY,h:p.heading,
+                    eye:null,last:now};
+  }
+  const dt=clamp((now-rig.last)*.001,0,.09);
+  rig.last=now;
+  const follow=1-Math.exp(-7*dt),vertical=1-Math.exp(-3*dt),
+        turnFollow=1-Math.exp(-3.2*dt),eyeFollow=1-Math.exp(-7*dt);
+  rig.x=lerp(rig.x,p.x,follow);rig.z=lerp(rig.z,p.z,follow);
+  rig.y=lerp(rig.y,stableAimY,vertical);
+  rig.h+=Math.atan2(Math.sin(p.heading-rig.h),Math.cos(p.heading-rig.h))*turnFollow;
+  const desired=[rig.x-Math.sin(rig.h)*1.72,rig.y+.68,
+                 rig.z-Math.cos(rig.h)*1.72];
+  desired[1]=Math.max(desired[1],height(desired[0],desired[2])+.46);
+  rig.eye=rig.eye?rig.eye.map((v,i)=>lerp(v,desired[i],eyeFollow)):desired;
+  const target=[rig.x,rig.y+.04,rig.z];
+  flight.cameraEye=rig.eye;
+  const look=viewMatrix(rig.eye,target),projection=perspective(PI/3,W/H,.09,185);
+  camera={eye:rig.eye,...look,vp:mm(projection,look.m)};return;
  }
  if(flight.active){
   const b=flight.b,f=flyHeading();
@@ -2104,7 +2125,7 @@ if(new URLSearchParams(location.search).has('emu-demo')){
   normal:top.normal,emuWake:true});
 }
 window.__meadowEmu={start:startRobotRide,state:()=>({loaded:!!emu,riding:emuRiding,loading:emuLoading,
-  pose:emu?.pose||null,rock:{...EMU_ROCK}}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
+  pose:emu?.pose||null,rock:{...EMU_ROCK},clearing:{...EMU_CLEARING},cameraRig:emuCameraRig?{x:emuCameraRig.x,y:emuCameraRig.y,z:emuCameraRig.z,heading:emuCameraRig.h}:null}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
 window.__meadowDiagnostics=()=>({cameraSettings:{...cameraSettings},render:'webgl',lizardConfig:{...lizardConfig},lizardStrokeCount:lizardLines.length,landscape:{...landscape},lighting:{...lighting},groundTriangles:Math.round(land.count/3),leaves:Math.round(foliage.count/6),apples:Math.round(fruit.count/270),swingAngle:swingState.angle,swingLength:ropeLength,skybox:skySource!=='procedural',skyboxSource:skySource,skyboxStatus:skyStatus,skyLoadAttempts:[...skyLoadAttempts],skyboxURL:SKYBOX_URL,skyboxTextureComplete:gl.isTexture(skyTex),fairyDoor:true,doorScale:.27,scenery:{...sceneryCounts},nectarFlowers:flowers.filter(f=>f.nectar).length,perchSites:perchSites.length,rockCollisionSurfaces:rockSurfaces.length,visiblePollen:pollen.length,ambientMotes:ambientMotes.length,fallingLeaves:fallingLeaves.length,groundLeaves:GROUND_LEAF_COUNT,leafSources:leafSources.length,flightCatches:flight.catches,camera:{turn,elev,radius},butterflies:bugs.slice(0,config.count).map(b=>({x:b.pos[0],y:b.pos[1],z:b.pos[2],state:b.state,intent:b.intent,tourStops:b.tourStops,target:[...b.target],mode:b.mode,vel:b.vel,pitch:b.pitch,bank:b.bank,aoa:b.aoa,speed:b.speed,energy:b.energy,wingPhase:b.phase,altitude:b.pos[1]-height(b.pos[0],b.pos[2])}))});
 })();
 </script><script>
