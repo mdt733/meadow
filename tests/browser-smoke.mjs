@@ -11,7 +11,11 @@ const errors=[],requests=[];
 mkdirSync('artifacts',{recursive:true});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:800},deviceScaleFactor:1});
+ page.on('console',msg=>{if(msg.type()==='error')errors.push('console: '+msg.text())});
  page.on('pageerror',error=>errors.push(String(error)));
+ page.on('response',response=>{
+  if(response.status()>=400)errors.push('HTTP '+response.status()+' '+response.url());
+ });
  page.on('request',request=>{if(request.url().endsWith('/champion.emupolicy'))requests.push(request.url());});
  await page.goto('http://127.0.0.1:8765/meadow.html',{waitUntil:'domcontentloaded'});
  await page.locator('#emuStart').waitFor({state:'visible',timeout:30000});
@@ -20,7 +24,20 @@ try{
  assert.equal(requests.length,0,'EMUs large actor must NOT download before activation');
  await page.screenshot({path:'artifacts/emu-walk-button.png'});
  await page.locator('#emuStart').click();
- await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:90000});
+ try{
+  await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:30000});
+ }catch(error){
+  const status=await page.evaluate(()=>({
+   emu:window.__meadowEmu?.state(),
+   loader:document.getElementById('emuLoadStatus')?.textContent,
+   alert:document.getElementById('flyAlert')?.textContent,
+   progress:document.getElementById('emuProgress')?.value
+  }));
+  console.log('EMU failed to wake. Diagnostics:',JSON.stringify(status));
+  console.log('Browser errors:',errors);
+  await page.screenshot({path:'artifacts/emu-physics-load-failure.png'});
+  throw error;
+ }
  await page.waitForFunction(()=>window.__meadowEmu?.state().pose?.frames>5,null,{timeout:15000});
  let state=await page.evaluate(()=>window.__meadowEmu.state());
  assert.equal(requests.length,1,'Actor is downloaded exactly once on opt in');
