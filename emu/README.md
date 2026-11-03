@@ -1,66 +1,65 @@
-# EMU butterfly rider (experimental)
+# EMU Butterfly Rider — actual neural policy + MuJoCo WASM physics
 
-EMU is available directly from the **🤖 Walk the robot** button next to
-**🦋 Fly a butterfly** on the standalone Meadow page. No rock hunt required.
+**Walk the robot** appears alongside **Fly a butterfly** in ordinary Meadow.
+Alternatively, land on the square teal-and-gold rock near x=7,z=9.1 to wake
+EMU as an Easter egg. `?emu-demo=1` starts already perched on that rock.
 
-The Easter egg remains: fly to the unmistakable **square teal rock with the
-golden diamond on top** near (x=7,z=9.1), land and choose **Wake the little
-robot**. It is a real collidable rock, not an invisible click target.
+## What actually runs
 
-The ordinary homepage does not fetch any EMU scripts, runtime or policy
-until either option is deliberately selected.
+- Real **v5032 Pinnacle 260,046,848-step champion** `champion.emupolicy`
+  (360 observation inputs, two 256-neuron hidden layers, six motor outputs).
+- EMU's own browser actor / sensor / control / MuJoCo simulation code,
+  imported from the pinned EMU repository commit. This includes the real
+  *robot.xml*, actuated servos, passive shin springs, foot contacts and
+  gravity. Per-frame network actions are **actually passed to MuJoCo**.
+- **Google DeepMind `@mujoco/mujoco@3.17.0` compiled into WASM**. The
+  physics engine and its 10.9MB binary are fetched only on first robot ride;
+  this is an explicit tradeoff for accurate dynamics rather than toy physics.
+- Real physics terrain: a **257×257 collision heightfield**, covering 31m
+  edge-to-edge, sampled from Meadow's existing procedural `height(x,z)`.
+  The rendered robot pose, leg link endpoints, butterfly perch and navigation
+  use MuJoCo's actual body positions.
+- The simulation and neural policy run entirely in the visitor's browser,
+  without JAX, Python or a running GPU training server.
 
-- The 886,002-byte `champion.emupolicy` is copied from `mdt733/emu`,
-  v5032 Pinnacle, 260,046,848 training steps. It includes the 360-input
-  observation contract, 256×256 network, six outputs, and normalization.
-- `policy.js` is reused from EMU's own browser viewer (with no ML library).
-  A trained policy actually produces all six joint commands every 20 ms.
-- `emu.js` assembles four observation history frames and an approximate 4×4
-  Meadow heightfield scan, updates servos, and exposes articulated joints.
-- Meadow's own WebGL renderer draws the 6-DoF robot with proper scene depth,
-  and the same butterfly is attached to the robot's head while riding.
-- W/S or the virtual stick move, A/D turn, SPACE / Fly away launches the
-  butterfly; normal Exit returns to the homepage with EMU following the lizard.
-  Landing on the same special rock again offers another ride.
-- Only a small JavaScript controller is added before activation; the policy
-  arrives on-demand with an actual download progress bar and HTTP caching.
+There is **no kinematic movement assist**, scripted gait, teleport-forward
+navigation or second fake servo model. The previous lightweight proxy has
+been deleted. Joystick and lizard-follow mode send desired velocity/yaw
+commands to the same original EMU policy control path; whether EMU manages
+to walk, stumble or fall depends on MuJoCo dynamics and the learned actor.
 
-## Major limitation, on purpose
+**Important scope:** The 31m hfield currently covers the central garden,
+but the ornamental 3D tree trunks, rocks and butterfly are not yet separately
+added as MuJoCo collision obstacles. A fixed hfield does not extend infinitely.
+The browser viewer's sensor model is inherited from EMU and the physical
+heightfield approximation is close but not perfectly identical to the
+high-resolution rendered mesh. This is physics-based interaction, not
+an official EMU physical evaluation result.
 
-**This is a garden prototype, NOT a physical accuracy demonstration.** The
-browser controller uses a lightweight six-joint kinematic/contact proxy and
-explicit, small navigation assistance instead of the original MuJoCo/MJX
-rigid-body engine. Its IMU, optical flow and ToF observations approximate the
-required contract; they do not replicate the training sensor timing, contact
-physics, or self-occlusion. It should never be scored as an EMU physical exam
-or described as MuJoCo-equivalent walking. Policy inference, however, is the
-real champion actor and is not replaced by canned gait animations.
-
-Future version: lazily load official MuJoCo WebAssembly and drive its
-`robot.xml` on a collision heightfield sampled from Meadow, then validate
-joint trajectories against EMU's reference browser viewer before calling it
-physics-faithful.
-
-## Run / test
-
-Serve the repo with a real HTTP server (ES modules and fetch cannot run from
-`file://`):
+## Local playtest
 
 ```bash
-python3 -m http.server 8000
-# http://localhost:8000/meadow.html
-node tests/check-inline.mjs
-node --test tests/emu-rider.test.mjs
+cd ~/meadow-emu-playtest
+git pull --ff-only origin feature/emu-butterfly-rider
+python3 -m http.server 8000 --bind 0.0.0.0
 ```
 
-Choose **Walk the robot** from the regular Meadow homepage; loading then
-automatically puts the butterfly on EMU's head. The alternate discovery path
-uses the square rock. For a shortcut straight to the rock landing, open
-`http://localhost:8000/meadow.html?emu-demo=1`.
+Open `http://localhost:8000/meadow.html`, click **Walk the robot**, and
+allow the additional engine download. W/S drive speed, A/D yaw; touch stick
+also works. SPACE or Fly away releases the butterfly; Exit returns to the
+homepage and leaves EMU trying to follow the lizard.
 
-On mobile, use the touch stick to pilot and **Fly away** to dismount. On
-embedded Meadow pages the buttons remain hidden, like the existing butterfly
-button; the parent can request a robot ride via the same-origin
-`postMessage({type:'meadow-emu-start'}, location.origin)` event.
+For branch developers, `emu/physics/UPSTREAM.md` documents the pinned
+upstream source and Vite-based build. Rebuild with:
 
-**This entire feature lives on `feature/emu-butterfly-rider`; `main` is unchanged.**
+```bash
+cd emu/physics
+npm install
+npm run build
+```
+
+A GitHub Actions build commits the prebuilt WASM and JS to this branch so
+**WSL playtesting does not require npm**. Separate CI drives the interface in
+Chromium to verify the actual actor and servo motion.
+
+`main` is frozen; this stays on `feature/emu-butterfly-rider` until approved.
