@@ -18,7 +18,10 @@ EMU as an Easter egg. `?emu-demo=1` starts already perched on that rock.
 - Real physics terrain: a **257×257 collision heightfield**, covering 31m
   edge-to-edge, sampled from Meadow's existing procedural `height(x,z)`.
   The rendered robot pose, leg link endpoints, butterfly perch and navigation
-  use MuJoCo's actual body positions.
+  use MuJoCo's actual body positions. A small *visibly levelled clearing* near
+  x=9.8,z=9.1 makes a sane starting patch; both the visual mesh and physical
+  heightfield sample that exact same shape. The previous rockside spawn was
+  a steep ~14° slope and caused immediate falls.
 - The simulation and neural policy run entirely in the visitor's browser,
   without JAX, Python or a running GPU training server.
 
