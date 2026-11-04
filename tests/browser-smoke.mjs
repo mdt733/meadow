@@ -49,6 +49,8 @@ try{
  assert.ok(flightZoom<.85,'scrolling up zooms in on airborne butterfly');
  await page.mouse.up();
  await page.waitForTimeout(1050);
+ // Force a render even if headless SwiftShader's RAF was delayed.
+ await page.evaluate(()=>window.__meadowStep(.05));
  const flightReturn=await page.evaluate(()=>window.__meadowFlight.state().camera);
  assert.equal(flightReturn.dragging,false,'releasing mouse returns to chase mode');
  assert.ok(Math.abs(flightReturn.yaw)<Math.abs(flightDrag.camera.yaw)*.80,
@@ -134,6 +136,7 @@ try{
  assert.ok(emuZoom>1.4,'scrolling down must zoom the robot camera out');
  await page.mouse.up();
  await page.waitForTimeout(950);
+ await page.evaluate(()=>window.__meadowStep(.05));
  const emuCameraReturn=await page.evaluate(()=>window.__meadowEmu.state().camera);
  assert.equal(emuCameraReturn.dragging,false);
  assert.ok(Math.abs(emuCameraReturn.yaw)<Math.abs(emuCameraDrag.camera.yaw)*.85,
