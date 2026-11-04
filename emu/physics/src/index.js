@@ -47,13 +47,13 @@ export function sampleMeadowPark(heightAt,origin){
 }
 
 export class PhysicalMeadowEmu {
- static async create(bundle,heightAt,start={x:8,z:9.1}){
+ static async create(bundle,heightAt,start={x:8,z:9.1},wasmBinary=null){
   // The secondary WebGL canvas is never inserted into the page or rendered.
   // It exists to reuse EMU's physically validated viewer engine and its exact
   // sensor / actuation paths, not to draw another meadow over Meadow's scene.
   const canvas=document.createElement('canvas');
   canvas.width=2;canvas.height=2;
-  const sim=await EmuBrowserSim.create(canvas,bundle);
+  const sim=await EmuBrowserSim.create(canvas,bundle,wasmBinary);
   const origin={x:start.x,z:start.z,height:heightAt(start.x,start.z)};
   sim.meadowPark=sampleMeadowPark(heightAt,origin);
   sim.terrainMode='park';
