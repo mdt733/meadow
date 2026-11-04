@@ -66,10 +66,18 @@ an official EMU physical evaluation result.
   (MuJoCo +Y is left). The camera has its own screen-space handedness; the
   browser test now checks projected screen-right and actual body rotation,
   rather than the yaw command alone.
-- Third-person camera orientation and target follow independent,
-  frame-rate-aware exponential smoothing; its vertical target is taken from
-  **ground plus 21cm**, not the moving torso or butterfly. This deliberately
-  smooths the picture without modifying physical motion, policies or sensors.
+- Third-person camera follows independently of the actor, with
+  frame-rate-aware position smoothing and a target at **ground plus 21cm**
+  instead of the bobbing torso. The camera never modifies sensors or physics.
+- **Mouse or touch drag on the scene**: temporarily orbit and look up/down
+  around either the airborne/perched butterfly or the walking robot.
+  The orbit angle gently returns behind the moving subject shortly after
+  releasing the pointer; the actor continues walking/flying normally.
+- **Mouse wheel or trackpad scroll**: zoom smoothly in/out.
+  **Two-finger spread/pinch on the scene**: touch zoom. Unlike the yaw/elevation
+  orbit, zoom stays at its chosen level until changed or a new pilot session
+  starts. The on-screen joystick and flap/dismount buttons keep their own
+  independent touch controls.
 - Space/Fly away: dismount; Exit: leave robot following the lizard.
 
 ## Local playtest
