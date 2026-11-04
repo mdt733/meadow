@@ -89,7 +89,7 @@ html.tilt-steering .fly-joystick{display:none}
     <a id="flyStandalone" href="meadow.html?pilot=1" target="_blank" rel="noopener" hidden>Open standalone ↗</a>
     <span id="flySensorStatus" role="status" aria-live="polite"></span>
   </div>
-  <div class="fly-instructions" id="flyInstructions">W · dive &nbsp; S · climb &nbsp; A / D · bank &nbsp; SPACE · flap / launch &nbsp; Perch on flowers, rocks, leaves or the swing &nbsp; ESC · exit</div>
+  <div class="fly-instructions" id="flyInstructions">W · dive &nbsp; S · climb &nbsp; A/D · bank &nbsp; Space · flap &nbsp; Drag · look &nbsp; Scroll/pinch · zoom &nbsp; Esc · exit</div>
   <div class="fly-touch" aria-label="Touch flight controls"><div id="flyJoystick" class="fly-joystick" role="group" aria-label="Flight joystick: up to climb, down to dive, left and right to bank"><div id="flyStick" class="fly-stick" aria-hidden="true"></div></div><button type="button" class="fly-flap" data-flight-key="space">FLAP 🦋</button></div>
 </div>
 <button id="emuWake" type="button" hidden>✧ Wake the little robot</button>
@@ -970,7 +970,7 @@ const FLY={g:9.81, drag0:.055,dragV2:.065,induced:.032, liftV2:2.30,
  stallStart:.70,stallLoss:1.15,minAttach:.62,minCl:.06,maxCl:1.75,
  flapBase:.70,flapPulse:.30,positiveFlap:true,bankDrag:.055,bankSpeed:true,stallDrag:.55};
 const flight={active:false,b:null,keys:Object.create(null),speed:1.9,gamma:-.06,
- flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,nectar:0,
+ flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,cameraZoom:1,nectar:0,
  visit:new Set(),landed:false,perch:null,perchFlower:null,takeoffArmed:false,touchdown:0,caughtTimer:0,catches:0,flapCount:0,vs:0,aoa:0,drag:0,lift:0,
  mode:'GLIDING'};
 const joystick={x:0,y:0,pointer:null}; // Bank right +x, climb +y.
@@ -1332,11 +1332,11 @@ function showEmuRockPrompt(site){
 function mountEmu(){
  if(!emu||!flight.active)return;
  emuRiding=true;flight.landed=false;flight.perch=null;flight.perchFlower=null;
- flight.keys=Object.create(null);resetJoystick();flight.cameraEye=null;emuCameraRig=null;flight.lookYaw=0;
+ flight.keys=Object.create(null);resetJoystick();flight.cameraEye=null;emuCameraRig=null;resetPilotCamera();
  $('emuWake').hidden=true;$('emuLeave').hidden=false;
  $('flyHudTitle').textContent='Butterfly riding EMU';
  document.querySelector('.fly-flap').textContent='HOP OFF 🦋';
- $('flyInstructions').textContent='W / S · forward / back   A / D · turn   SPACE · release butterfly   ESC · return to meadow';
+ $('flyInstructions').textContent='W/S · walk   A/D · turn   Drag · look around   Scroll / pinch · zoom   Space · dismount   Esc · exit';
  flight.mode='EMU RIDER';flight.b.state='perched';flight.b.mode='glide';
 }
 function dismountEmu(toFlight=true){
@@ -1417,7 +1417,7 @@ function beginFlight(){
  Object.assign(flight.b,{pos:[x,height(x,z)+2.45,z],heading:-2.62,pitch:.09,bank:0,energy:1,phase:0,hz:1/FLY.flapInterval,mode:'glide',state:'flying',col:[.99,.70,.23]});
  flight.keys=Object.create(null);flight.active=true;flight.speed=1.9;flight.gamma=-.06;
  flight.flapCooldown=0;flight.flapGlow=0;flight.stalled=false;flight.yawRate=0;
- flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;flight.lookYaw=0;flight.lookElevation=.28;flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;$('emuWake').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
+ flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;resetPilotCamera();flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;$('emuWake').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
  raceReset();$('flyRace').textContent='';$('raceDirection').hidden=true;$('raceToast').hidden=true;
  flight.vs=0;flight.mode='GLIDING';$('flyHud').hidden=false;$('flyStart').hidden=true;$('emuStart').hidden=true;
  document.documentElement.classList.add('flight-active');
@@ -1426,7 +1426,7 @@ function beginFlight(){
  canvas.focus({preventScroll:true});updateCamera();draw();
  if(window.parent!==window)window.parent.postMessage({type:'meadow-flight-state',active:true},location.origin);
 }
-function endFlight(){if(!flight.active)return;dismountEmu(false);$('emuWake').hidden=true;resetJoystick();setTiltMode(false);exitImmersive();document.documentElement.classList.remove('flight-active');raceReset();$('raceToast').hidden=true;$('raceDirection').hidden=true;$('flyRace').textContent='';flight.active=false;flight.keys=Object.create(null);flight.cameraEye=null;flight.lookYaw=0;flight.lookElevation=.28;flight.b=null;
+function endFlight(){if(!flight.active)return;dismountEmu(false);$('emuWake').hidden=true;resetJoystick();setTiltMode(false);exitImmersive();document.documentElement.classList.remove('flight-active');raceReset();$('raceToast').hidden=true;$('raceDirection').hidden=true;$('flyRace').textContent='';flight.active=false;flight.keys=Object.create(null);flight.cameraEye=null;resetPilotCamera();flight.b=null;
  $('flyHud').hidden=true;$('flyStart').hidden=false;$('emuStart').hidden=false;
  down=null;updateCamera();draw();if(window.parent!==window)window.parent.postMessage({type:'meadow-flight-state',active:false},location.origin);
 }
@@ -1437,7 +1437,8 @@ function landFlight(site=null){
  flight.landed=true;flight.perch=site;flight.perchFlower=site.type==='flower'?site.flower:null;
  flight.takeoffArmed=false;flight.touchdown=0;flight.stalled=false;
  flight.speed=0;flight.gamma=0;flight.yawRate=0;flight.vs=0;
- flight.lookYaw=0;flight.lookElevation=.28; // Start behind the perched butterfly.
+ // Retain the current camera orbit across landing; release naturally drifts
+ // it back behind the butterfly instead of snapping the view at touchdown.
  perchedPose(b,site);b.phase=PI/2;showEmuRockPrompt(site);
  emitPollenOnFlower(site);
  // This only steers the existing lizard toward prey it can physically reach.
@@ -1488,7 +1489,7 @@ function stepFlight(dt){
     continue;
    }
    flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;
-   flight.lookYaw=0;flight.lookElevation=.28; // Resume normal chase camera.
+   // Taking off must not snap an active camera drag back to centre.
    b.state='flying';b.flower=null;b.pos[1]=Math.max(b.pos[1]+.30,height(b.pos[0],b.pos[2])+.35);
    flight.speed=1.75;flight.gamma=.56;b.pitch=.49;
   }
@@ -1962,8 +1963,38 @@ window.__meadowWorld={height,project:projectPoint,
  butterflyCount:()=>lizardPrey().length,
  eatButterfly,isPaused:()=>paused,lizardConfig,setLizardLines:strokes=>{lizardLines=strokes.map(pair=>pair.map(p=>[...p]))}};
 function frameShift(){return landscape.framing*(W<680?.42:1)}
+// Orbit input is camera-only. The controlled butterfly and EMU actor never
+// read any of these values. After release the view eases back into chase;
+// zoom remains where the visitor left it until the next flight/ride.
+let cameraGrip=false,cameraReturnAt=0,cameraLookMs=0;
+function resetPilotCamera(){
+ flight.lookYaw=0;flight.lookElevation=.28;flight.cameraZoom=1;
+ cameraGrip=false;cameraReturnAt=0;cameraLookMs=performance.now();
+ cameraPointers.clear();cameraPinch=null;down=null;
+}
+function updatePilotCameraReturn(now){
+ const dt=clamp((now-(cameraLookMs||now))/1000,0,.09);
+ cameraLookMs=now;
+ if(!cameraGrip&&now>=cameraReturnAt){
+  const a=1-Math.exp(-1.8*dt);
+  // Wrap before damping so one or more full drag-orbits always returns by
+  // the shortest angle, without wild spinning when letting go.
+  flight.lookYaw=Math.atan2(Math.sin(flight.lookYaw),Math.cos(flight.lookYaw))*(1-a);
+  flight.lookElevation=lerp(flight.lookElevation,.28,a);
+ }
+}
+function orbitPilotEye(originalEye,target){
+ const d=sub(originalEye,target),dist=Math.max(.001,len(d))*flight.cameraZoom,
+       horizontal=Math.hypot(d[0],d[2]);
+ const yaw=Math.atan2(-d[0],-d[2])+flight.lookYaw;
+ const elevation=clamp(Math.atan2(d[1],horizontal)+(flight.lookElevation-.28),-.16,1.38);
+ const flat=dist*Math.cos(elevation);
+ return [target[0]-Math.sin(yaw)*flat,target[1]+Math.sin(elevation)*dist,
+         target[2]-Math.cos(yaw)*flat];
+}
 // ── Camera, WebGL frame and input loop ──
 function updateCamera(){
+ if(flight.active)updatePilotCameraReturn(performance.now());
  if(flight.active&&emuRiding&&emu){
   // Smooth camera TRACKING only; the robot, its limbs and its physical IMU
   // remain unsmoothed MuJoCo output. Never aim at the bobbing torso/head.
@@ -1982,11 +2013,12 @@ function updateCamera(){
   rig.x=lerp(rig.x,p.x,follow);rig.z=lerp(rig.z,p.z,follow);
   rig.y=lerp(rig.y,stableAimY,vertical);
   rig.h+=Math.atan2(Math.sin(p.heading-rig.h),Math.cos(p.heading-rig.h))*turnFollow;
-  const desired=[rig.x-Math.sin(rig.h)*1.72,rig.y+.68,
-                 rig.z-Math.cos(rig.h)*1.72];
-  desired[1]=Math.max(desired[1],height(desired[0],desired[2])+.46);
-  rig.eye=rig.eye?rig.eye.map((v,i)=>lerp(v,desired[i],eyeFollow)):desired;
   const target=[rig.x,rig.y+.04,rig.z];
+  const desired=orbitPilotEye([rig.x-Math.sin(rig.h)*1.72,rig.y+.68,
+                              rig.z-Math.cos(rig.h)*1.72],target);
+  desired[1]=Math.max(desired[1],height(desired[0],desired[2])+.26);
+  const visualFollow=cameraGrip?1:eyeFollow;
+  rig.eye=rig.eye?rig.eye.map((v,i)=>lerp(v,desired[i],visualFollow)):desired;
   flight.cameraEye=rig.eye;
   const look=viewMatrix(rig.eye,target),projection=perspective(PI/3,W/H,.09,185);
   camera={eye:rig.eye,...look,vp:mm(projection,look.m)};return;
@@ -1995,17 +2027,18 @@ function updateCamera(){
   const b=flight.b,f=flyHeading();
   let desired,target;
   if(flight.landed){
-   // Third-person perch orbit. Rotation is camera-only: the butterfly stays
-   // attached to its flower, rock, leaf or moving swing and keeps facing ahead.
-   const angle=b.heading+flight.lookYaw,dist=2.55,flat=dist*Math.cos(flight.lookElevation);
-   desired=[b.pos[0]-Math.sin(angle)*flat,b.pos[1]+.25+dist*Math.sin(flight.lookElevation),b.pos[2]-Math.cos(angle)*flat];
+   // Perch follows the same orbit/zoom rules as flying: the object stays
+   // stationary while only the observer circles it.
+   const angle=b.heading,dist=2.55,flat=dist*Math.cos(.28);
+   desired=[b.pos[0]-Math.sin(angle)*flat,b.pos[1]+.25+dist*Math.sin(.28),b.pos[2]-Math.cos(angle)*flat];
    target=add(b.pos,[0,.13,0]);
   }else{
    desired=[b.pos[0]-f[0]*2.55,b.pos[1]-f[1]*1.55+.84,b.pos[2]-f[2]*2.55];
    target=add(b.pos,add(mul(f,.90),[0,.08,0]));
   }
-  desired[1]=Math.max(desired[1],height(desired[0],desired[2])+.48);
-  const a=flight.cameraEye?.16:1;
+  desired=orbitPilotEye(desired,target);
+  desired[1]=Math.max(desired[1],height(desired[0],desired[2])+.28);
+  const a=cameraGrip?1:(flight.cameraEye?.16:1);
   flight.cameraEye=flight.cameraEye?flight.cameraEye.map((x,i)=>lerp(x,desired[i],a)):desired;
   const look=viewMatrix(flight.cameraEye,target),projection=perspective(PI/3,W/H,.09,185);
   camera={eye:flight.cameraEye,...look,vp:mm(projection,look.m)};return;
@@ -2067,35 +2100,83 @@ function draw(){if(!W)return;updateCamera();gl.viewport(0,0,canvas.width,canvas.
 }
 function setPaused(p){paused=p;$('pause').setAttribute('aria-pressed',String(p));$('pause').title=p?'Resume animation':'Pause animation';$('pauseIcon').innerHTML=p?'<path d="M8 5v14l11-7z"/>':'<path d="M8 5v14M16 5v14"/>'}
 $('pause').onclick=()=>setPaused(!paused);
-// The canvas accepts the ordinary landscape orbit when idle, or a separate
-// camera-only orbit while perched. Pointer Events cover mouse, pen and touch;
-// touch flight buttons remain independent of dragging the scenery.
-let down=null;
+// Drag the canvas to inspect either flying butterfly or walking EMU.
+// Two fingers on the canvas pinch-zoom; HUD joystick/buttons own their own
+// pointer captures and never manipulate the camera.
+let down=null,cameraPinch=null;
+const cameraPointers=new Map();
+function beginCameraDrag(id,x,y){
+ down={id,x,y,mode:'pilot',yaw:flight.lookYaw,elevation:flight.lookElevation};
+}
+function cameraPinchDistance(){
+ const points=[...cameraPointers.values()];
+ return points.length<2?0:Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);
+}
 canvas.onpointerdown=e=>{
- if(down || (e.pointerType==='mouse'&&e.button!==0))return;
- if(flight.active&&!flight.landed)return;
- down={id:e.pointerId,x:e.clientX,y:e.clientY,mode:flight.landed?'perch':'landscape',
-  yaw:flight.lookYaw,lookElevation:flight.lookElevation,turn,elev};
+ if(e.pointerType==='mouse'&&e.button!==0)return;
+ if(flight.active){
+  cameraPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  cameraGrip=true;cameraReturnAt=Infinity;
+  if(cameraPointers.size===1)beginCameraDrag(e.pointerId,e.clientX,e.clientY);
+  else{
+   // Transition from orbit to pinch without a rotation jump.
+   if(cameraPointers.size===2)cameraPinch={
+    distance:Math.max(4,cameraPinchDistance()),zoom:flight.cameraZoom
+   };
+   down=null;
+  }
+  canvas.setPointerCapture(e.pointerId);e.preventDefault();return;
+ }
+ if(down)return;
+ down={id:e.pointerId,x:e.clientX,y:e.clientY,mode:'landscape',turn,elev};
  canvas.setPointerCapture(e.pointerId);e.preventDefault();
 };
 canvas.onpointermove=e=>{
- if(!down||e.pointerId!==down.id)return;
- if(down.mode==='perch'){
-  if(!flight.active||!flight.landed){down=null;return;}
-  flight.lookYaw=down.yaw-(e.clientX-down.x)/Math.max(W,350)*4.2;
-  flight.lookElevation=clamp(down.lookElevation+(e.clientY-down.y)/Math.max(H,440)*2.2,.05,1.22);
- }else{
-  if(flight.active){down=null;return;}
-  turn=down.turn-(e.clientX-down.x)/Math.max(W,350)*4.2;
-  elev=clamp(down.elev+(e.clientY-down.y)/Math.max(H,440)*2.2,-.12,1.23);
-  saveCamera();
+ if(flight.active&&cameraPointers.has(e.pointerId)){
+  cameraPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(cameraPinch&&cameraPointers.size>=2){
+   const distance=Math.max(4,cameraPinchDistance());
+   flight.cameraZoom=clamp(cameraPinch.zoom*cameraPinch.distance/distance,.24,3.5);
+  }else if(down?.id===e.pointerId){
+   flight.lookYaw=down.yaw-(e.clientX-down.x)/Math.max(W,350)*4.2;
+   flight.lookElevation=clamp(down.elevation+(e.clientY-down.y)/Math.max(H,440)*2.2,-.7,1.18);
+  }
+  e.preventDefault();draw();return;
  }
- e.preventDefault();draw();
+ if(!down||e.pointerId!==down.id||down.mode!=='landscape')return;
+ turn=down.turn-(e.clientX-down.x)/Math.max(W,350)*4.2;
+ elev=clamp(down.elev+(e.clientY-down.y)/Math.max(H,440)*2.2,-.12,1.23);
+ saveCamera();e.preventDefault();draw();
 };
-function releaseOrbit(e){if(down?.id===e.pointerId)down=null}
+function releaseOrbit(e){
+ if(flight.active&&cameraPointers.has(e.pointerId)){
+  cameraPointers.delete(e.pointerId);
+  down=null;cameraPinch=null;
+  if(cameraPointers.size===1){
+   const [id,point]=cameraPointers.entries().next().value;
+   beginCameraDrag(id,point.x,point.y);
+  }else if(cameraPointers.size>=2){
+   cameraPinch={distance:Math.max(4,cameraPinchDistance()),zoom:flight.cameraZoom};
+  }else{
+   cameraGrip=false;cameraReturnAt=performance.now()+420;
+  }
+  return;
+ }
+ if(down?.id===e.pointerId)down=null;
+}
 canvas.onpointerup=releaseOrbit;canvas.onpointercancel=releaseOrbit;
 canvas.onlostpointercapture=releaseOrbit;
-canvas.addEventListener('wheel',e=>{if(flight.active)return;e.preventDefault();radius=clamp(radius+Math.sign(e.deltaY)*1.15,9,42);saveCamera();draw()},{passive:false});
+canvas.addEventListener('wheel',e=>{
+ e.preventDefault();
+ if(flight.active){
+  // Trackpad and mouse wheels both scale distance smoothly. Keep this zoom
+  // until the visitor changes it, even after the orbit drifts back to chase.
+  flight.cameraZoom=clamp(flight.cameraZoom*Math.exp(clamp(e.deltaY*.0013,-.30,.30)),.24,3.5);
+ }else{
+  radius=clamp(radius+Math.sign(e.deltaY)*1.15,9,42);saveCamera();
+ }
+ draw();
+},{passive:false});
 function flightKey(e,isDown){
  if(!flight.active)return false;
  if(emuRiding&&isDown&&(e.code==='Space'||e.key===' ')){e.preventDefault();dismountEmu();return true;}
