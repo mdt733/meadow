@@ -22,7 +22,7 @@ function approach(x, target, maxDelta) {
   return x + Math.sign(d) * maxDelta;
 }
 
-export class EmuBrowserSim {
+export class EmuPhysicsCore {
   static async create(bundle,wasmBinary=null){
     if(!mujocoModulePromise){
       // Use exactly the bytes counted by Meadow's optional download bar:
@@ -32,7 +32,7 @@ export class EmuBrowserSim {
         ...(wasmBinary?{wasmBinary}:{})
       });
     }
-    return new EmuBrowserSim(bundle,await mujocoModulePromise);
+    return new EmuPhysicsCore(bundle,await mujocoModulePromise);
   }
   constructor(bundle, mujoco) {
     // The policy, observation history and MuJoCo integration below are
