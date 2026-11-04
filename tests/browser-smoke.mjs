@@ -7,7 +7,7 @@ import { mkdirSync } from 'node:fs';
 const browser=await chromium.launch({
  headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--disable-dev-shm-usage']
 });
-const errors=[],requests=[];
+const errors=[],requests=[],robotRequests=[];
 mkdirSync('artifacts',{recursive:true});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:800},deviceScaleFactor:1});
@@ -16,13 +16,39 @@ try{
  page.on('response',response=>{
   if(response.status()>=400)errors.push('HTTP '+response.status()+' '+response.url());
  });
- page.on('request',request=>{if(request.url().endsWith('/champion.emupolicy'))requests.push(request.url());});
+ page.on('request',request=>{
+  const url=request.url();
+  if(url.endsWith('/champion.emupolicy'))requests.push(url);
+  if(/\/emu\/champion\.emupolicy$|\/emu-physics\.js$|\/mujoco-[^/]+\.wasm$/.test(url))
+   robotRequests.push(url);
+ });
  await page.goto('http://127.0.0.1:8765/meadow.html',{waitUntil:'domcontentloaded'});
  await page.locator('#emuStart').waitFor({state:'visible',timeout:30000});
  assert.equal(await page.locator('#flyStart').isVisible(),true,'Butterfly launch still visible');
  assert.equal(await page.locator('#webgl-fallback').isVisible(),false,'WebGL fallback shown');
- assert.equal(requests.length,0,'EMUs large actor must NOT download before activation');
+ assert.equal(robotRequests.length,0,'no robot assets may download on an idle meadow');
+ assert.match(await page.locator('#emuStart').textContent(),/12\.5 MB download/);
  await page.screenshot({path:'artifacts/emu-walk-button.png'});
+ // Flying the butterfly should be genuinely free of all robot downloads.
+ await page.locator('#flyStart').click();
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.waitForTimeout(300);
+ assert.equal(robotRequests.length,0,'flying the butterfly must not fetch actor, JS or WASM');
+ await page.locator('#flyExit').click();
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===false);
+ // Observe actual progress DOM mutations as network chunks arrive.
+ await page.evaluate(()=>{
+  window.__emuProgressSamples=[];
+  const loader=document.getElementById('emuLoader');
+  new MutationObserver(()=>{
+   if(loader.hidden)return;
+   window.__emuProgressSamples.push({
+    value:Number(document.getElementById('emuProgress').value),
+    detail:document.getElementById('emuDownloadDetail').textContent,
+    stage:document.getElementById('emuLoadStatus').textContent
+   });
+  }).observe(loader,{attributes:true,subtree:true,childList:true,characterData:true});
+ });
  await page.locator('#emuStart').click();
  try{
   await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:30000});
@@ -41,6 +67,17 @@ try{
  await page.waitForFunction(()=>window.__meadowEmu?.state().pose?.frames>5,null,{timeout:15000});
  let state=await page.evaluate(()=>window.__meadowEmu.state());
  assert.equal(requests.length,1,'Actor is downloaded exactly once on opt in');
+ assert.equal(robotRequests.filter(x=>x.includes('.wasm')).length,1,
+   'WASM must be downloaded exactly once, not secretly downloaded again on boot');
+ assert.ok(robotRequests.some(x=>x.endsWith('/emu-physics.js')),
+   'The runtime JS is fetched only after Walk is chosen');
+ const progressSamples=await page.evaluate(()=>window.__emuProgressSamples);
+ assert.ok(progressSamples.some(p=>p.value>.001 && p.value<.999),
+   'the progress bar must show real intermediate bytes, not jump from zero to 100%');
+ assert.ok(progressSamples.some(p=>p.detail.includes('12.5 MB') && p.detail.includes('100%')),
+   'the bar must finish with the actual 12.5 MB total');
+ console.log('Download progress samples:',progressSamples.length,
+             'max:',Math.max(...progressSamples.map(p=>p.value)));
  assert.equal(state.loaded,true);
  assert.equal(state.riding,true);
  assert.ok(state.pose.frames>5);
@@ -96,6 +133,8 @@ try{
  assert.equal(state.riding,false);
  assert.equal(await page.locator('#flyHud').isVisible(),false);
  assert.equal(await page.locator('#emuStart').isVisible(),true,'direct launch returns after exit');
+ assert.match(await page.locator('#emuStart').textContent(),/already loaded/,
+   'returning rider should not be warned about a new download');
  await page.screenshot({path:'artifacts/emu-follows-lizard.png'});
 
  // Re-enter without triggering another actor download.
