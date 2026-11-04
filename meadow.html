@@ -1973,10 +1973,14 @@ function resetPilotCamera(){
  cameraPointers.clear();cameraPinch=null;down=null;
 }
 function updatePilotCameraReturn(now){
- const dt=clamp((now-(cameraLookMs||now))/1000,0,.09);
+ const last=cameraLookMs||now;
  cameraLookMs=now;
  if(!cameraGrip&&now>=cameraReturnAt){
-  const a=1-Math.exp(-1.8*dt);
+  // Use actual elapsed time AFTER the release grace period, even if WebGL
+  // temporarily drops frames. Camera settling should not take minutes on a
+  // busy phone/low-end GPU, and is never applied to physical actor motion.
+  const elapsed=clamp((now-Math.max(last,cameraReturnAt))/1000,0,5);
+  const a=1-Math.exp(-2.0*elapsed);
   // Wrap before damping so one or more full drag-orbits always returns by
   // the shortest angle, without wild spinning when letting go.
   flight.lookYaw=Math.atan2(Math.sin(flight.lookYaw),Math.cos(flight.lookYaw))*(1-a);
