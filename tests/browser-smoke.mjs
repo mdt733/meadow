@@ -365,7 +365,9 @@ try{
 
  // The new discoverable arch uses a genuine swept-plane crossing and
  // pauses butterfly flight. It never loads MuJoCo until Walk is selected.
- await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-demo=1',{waitUntil:'domcontentloaded'});
+ await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-flight-demo=1',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
  await page.locator('#emuGateWalk').waitFor({state:'visible',timeout:30000});
  assert.equal(await page.locator('#emuStart').isVisible(),false,'entry buttons hidden in pilot mode');
  const encounter=await page.evaluate(()=>({
@@ -384,8 +386,12 @@ try{
  assert.equal(await page.evaluate(()=>window.__meadowFlight.state().gatePaused),false);
  assert.ok((await page.evaluate(()=>window.__meadowFlight.state().speed))>1,
   'Keep flying must restore real flight momentum');
- await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-demo=1',{waitUntil:'domcontentloaded'});
+ await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-flight-demo=reverse',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
  await page.locator('#emuGateWalk').waitFor({state:'visible',timeout:30000});
+ assert.equal(await page.evaluate(()=>window.__meadowFlight.state().gatePaused),true,
+  'the arch should also catch real physical flight from its opposite side');
  await page.evaluate(()=>{
   window.__archLoaderSeen=false;
   const loader=document.getElementById('emuLoader');
