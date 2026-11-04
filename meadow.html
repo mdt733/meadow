@@ -21,7 +21,15 @@
   <div class="fly-instructions" id="flyInstructions">W · dive &nbsp; S · climb &nbsp; A/D · bank &nbsp; Space · flap &nbsp; Drag · look &nbsp; Scroll/pinch · zoom &nbsp; Esc · exit</div>
   <div class="fly-touch" aria-label="Touch flight controls"><div id="flyJoystick" class="fly-joystick" role="group" aria-label="Flight joystick: up to climb, down to dive, left and right to bank"><div id="flyStick" class="fly-stick" aria-hidden="true"></div></div><button type="button" class="fly-flap" data-flight-key="space">FLAP 🦋</button></div>
 </div>
-<button id="emuWake" type="button" hidden>✧ Wake the little robot</button>
+<div id="emuGatePrompt" hidden role="dialog" aria-modal="true" aria-labelledby="emuGateTitle">
+  <div class="emu-gate-card">
+    <span class="emu-gate-symbol" aria-hidden="true">✦ 🤖 ✦</span>
+    <h2 id="emuGateTitle">You found EMU!</h2>
+    <p>The butterfly rests at the robot arch. Want to take the six-servo walker out for a stroll?</p>
+    <button id="emuGateWalk" type="button">🤖 Walk the robot <span class="emu-download-note">(≈12 MB download)</span></button>
+    <button id="emuGateContinue" type="button">🦋 Keep flying</button>
+  </div>
+</div>
 <div id="emuLoader" hidden role="status" aria-live="polite"><strong>Downloading EMU…</strong><progress id="emuProgress" max="1" value="0" aria-label="Optional robot download progress"></progress><div id="emuDownloadDetail">0.0 / ≈12 MB · 0%</div><div id="emuLoadStatus">Preparing the optional download…</div></div>
 <canvas id="scene" tabindex="0" aria-label="A golden hour meadow with an apple tree, miniature fairy door and gently swaying swing and wandering butterflies. Drag to orbit, scroll to zoom."></canvas><div id="mist"></div>
 <h1>Go <em>outside.</em></h1>
