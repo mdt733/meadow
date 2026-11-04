@@ -8,6 +8,7 @@ on:
       - 'emu/**'
       - 'meadow.html'
       - 'ground-lizard.js'
+      - 'assets/**'
       - 'tests/**'
 
 jobs:
@@ -22,7 +23,7 @@ jobs:
       - run: node --check emu/policy.js
       - run: node --check ground-lizard.js
       - run: node tests/check-inline.mjs
-      - run: node --test tests/emu-rider.test.mjs
+      - run: node --test tests/emu-rider.test.mjs tests/meadow-flight.test.mjs
       - name: Install headless browser
         run: |
           npm install --no-save playwright@1.56.1

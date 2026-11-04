@@ -170,7 +170,11 @@ function newWanderDestination(){
   if(p&&Math.hypot(p.x-critter.x,p.y-critter.y)>1.8){destination=p;return;}}
  destination=confine({x:critter.x+(Math.random()-.5)*9,y:critter.y+(Math.random()-.5)*9});
 }
-function butterflies(){return world.bugs().slice(0,world.butterflyCount()).filter(b=>b.state==='perched'&&Math.hypot(b.pos[0],b.pos[2])>2.8&&Math.hypot(b.pos[0],b.pos[2])<15);}
+function butterflies(){
+ // The world already supplies its current reachable prey. Re-filter only by
+ // the lizard's roaming boundary; don't run the world's prey scan twice.
+ return world.bugs().filter(b=>b.state==='perched'&&Math.hypot(b.pos[0],b.pos[2])>2.8&&Math.hypot(b.pos[0],b.pos[2])<15);
+}
 function preyPosition(b){return b?{x:b.pos[0],y:b.pos[2]}:null;}
 function closestButterfly(){let best=null,dist=Infinity;
  for(const b of butterflies()){
@@ -199,6 +203,8 @@ function opportunisticButterfly(target){
 
 let pointer={x:W/2,y:H*.8},pointerChanged=false;
 function inputMove(x,y){
+ // Dragging the butterfly/robot camera must not redirect the lizard.
+ if(world.isPiloting?.())return;
  const moved=!lastMouse||Math.hypot(x-lastMouse.x,y-lastMouse.y)>1.5;
  lastMouse={x,y};
  if(moved){const p=surfaceGoal(x,y);if(p){pointer=p;pointerChanged=true;}}
@@ -262,11 +268,18 @@ function logicStep(){
 }
 
 function draw(){lines.length=0;critter.draw();world.setLizardLines(lines);}
+let pausedFrameDrawn=false;
 function frame(now){requestAnimationFrame(frame);
  if(!active){last=now;return;}
  resize();const dt=clamp((now-last)/1000,0,.065);last=now;
  if(!critter){setupLizard();newWanderDestination();smoothedTarget={x:critter.x,y:critter.y};}
- if(world.isPaused()){draw();return;}
+ if(world.isPaused()){
+  // Preserve a single visible lizard pose for reduced-motion / paused mode;
+  // there is no point rebuilding identical line geometry every RAF.
+  if(!pausedFrameDrawn){draw();pausedFrameDrawn=true;}
+  return;
+ }
+ pausedFrameDrawn=false;
  elapsed+=dt*clamp(Number(world.lizardConfig?.speed)||3,.5,7);let iterations=0;
  while(elapsed>=1/60&&iterations<24){logicStep();elapsed-=1/60;iterations++;}
  if(iterations===24)elapsed=0;

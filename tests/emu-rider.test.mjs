@@ -52,7 +52,7 @@ test('MuJoCo collision heightfield uses Meadow geometry, not a flat plane',()=>{
 });
 test('Meadow body + heading + collision terrain all share right-positive coordinates',()=>{
  const source=read('../emu/physics/src/index.js');
- const html=read('../meadow.html');
+ const html=read('../assets/meadow.js');
  assert.match(source,/return \[origin\.x - mj\[1\],origin\.height \+ mj\[2\],origin\.z \+ mj\[0\]\]/);
  assert.match(source,/x:this\.origin\.x-nav\.y,z:this\.origin\.z\+nav\.x/);
  assert.match(source,/heading:-nav\.heading/);
@@ -62,7 +62,7 @@ test('Meadow body + heading + collision terrain all share right-positive coordin
  assert.match(html,/forward>=0\?forward\*\.56:forward\*\.34/);
 });
 test('the robot spawns in a broad outer-meadow clearing with a camera independent of torso bob',()=>{
- const html=read('../meadow.html');
+ const html=read('../assets/meadow.js');
  assert.match(html,/EMU_CLEARING=\{x:22,z:7\}/);
  assert.match(html,/d-4\.5\)\/2\.5/);
  assert.match(html,/const stableAimY=ground\+\.21/);
@@ -70,7 +70,7 @@ test('the robot spawns in a broad outer-meadow clearing with a camera independen
  assert.match(html,/emuCameraRig=null/);
 });
 test('all ≈12 MB of robot assets are explicit, accounted for and opt-in',()=>{
- const html=read('../meadow.html'),loader=read('../emu/emu.js');
+ const html=read('../meadow.html'),scene=read('../assets/meadow.js'),loader=read('../emu/emu.js');
  const upstream=read('../emu/physics/src/physical-sim.js');
  const adapter=read('../emu/physics/src/index.js');
  assert.equal(ROBOT_ASSETS.length,3);
@@ -84,7 +84,7 @@ test('all ≈12 MB of robot assets are explicit, accounted for and opt-in',()=>{
  assert.match(html,/Walk the robot <span class="emu-download-note">\(≈12 MB download\)<\/span>/);
  assert.match(html,/id="emuDownloadDetail"/);
  assert.match(html,/id="emuProgress"/);
- assert.match(html,/Wake EMU \(≈12 MB download\)/);
+ assert.match(scene,/Wake EMU \(≈12 MB download\)/);
  assert.match(loader,/response\.body\?\.getReader/);
  assert.match(loader,/report\(value\.byteLength,asset\.stage\)/);
  assert.match(loader,/wasmBinary=await downloadBytes/);
@@ -98,7 +98,7 @@ test('all ≈12 MB of robot assets are explicit, accounted for and opt-in',()=>{
  assert.match(adapter,/EmuPhysicsCore\.create\(bundle,wasmBinary\)/);
 });
 test('special rock top, diamond, sides and collision radius are all half-sized',()=>{
- const html=read('../meadow.html');
+ const html=read('../assets/meadow.js');
  assert.match(html,/topY=height\(x,z\)\+\.31/);
  assert.match(html,/const w=\.255,d=\.24,bevel=\.325/);
  assert.match(html,/const north=\[x,glyphY,z-\.15\]/);
@@ -108,14 +108,14 @@ test('special rock top, diamond, sides and collision radius are all half-sized',
 });
 
 test('public entrance offers walk button and rock alternative, both lazy',()=>{
- const html=read('../meadow.html');
+ const html=read('../meadow.html'),scene=read('../assets/meadow.js');
  assert.match(html,/id="emuStart"/);
  assert.match(html,/id="flyStart"/);
- assert.match(html,/addEmuCubeRock\(\)/);
- assert.match(html,/async function startRobotRide\(\)/);
- assert.match(html,/\$\('emuStart'\)\.onclick=startRobotRide/);
- assert.match(html,/module\.loadEmu/);
- assert.match(html,/emu\.autopilot/);
- assert.match(html,/function drawEmu\(/);
+ assert.match(scene,/addEmuCubeRock\(\)/);
+ assert.match(scene,/async function startRobotRide\(\)/);
+ assert.match(scene,/\$\('emuStart'\)\.onclick=startRobotRide/);
+ assert.match(scene,/module\.loadEmu/);
+ assert.match(scene,/emu\.autopilot/);
+ assert.match(scene,/function drawEmu\(/);
  assert.doesNotMatch(html,/<script[^>]+src=["']emu\/emu\.js/);
 });

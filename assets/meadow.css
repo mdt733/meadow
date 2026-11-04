@@ -1,0 +1,69 @@
+:root{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#f8ffed}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#96c8e1}button{font:inherit}button:focus-visible,input:focus-visible{outline:3px solid #e5ffde;outline-offset:3px}#scene{width:100%;height:100%;position:fixed;inset:0;display:block;cursor:grab;touch-action:none}#scene:active{cursor:grabbing}#mist{position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 65%,rgba(15,47,31,.13) 100%)}
+
+h1{position:fixed;left:clamp(24px,4vw,60px);bottom:clamp(86px,12vh,120px);pointer-events:none;font:normal clamp(44px,6.2vw,80px)/.98 Georgia,'Times New Roman',serif;letter-spacing:-.065em;margin:0;color:#fffdec;text-shadow:0 3px 24px #193b336c;z-index:2}h1 em{font-weight:400}footer{position:fixed;bottom:clamp(20px,3vw,40px);left:clamp(23px,4vw,56px);right:clamp(23px,4vw,56px);display:flex;justify-content:space-between;align-items:center;z-index:3}footer small{font-size:11px;text-shadow:0 1px 10px #1d493d9c;letter-spacing:.01em}.buttons{display:flex;gap:8px}.round{background:#f0ffecbd;color:#315f4b;border:1px solid #ffffffe3;width:39px;height:39px;border-radius:50%;display:grid;place-items:center;cursor:pointer;box-shadow:0 7px 25px #20473720;backdrop-filter:blur(12px)}.round:hover{background:#fafff5}.round[aria-pressed=true]{background:#3e745a;color:white}.round svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#webgl-fallback{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:30px;background:linear-gradient(#6daeda,#ddeaca 60%,#78aa60);color:#28523e;z-index:5}#webgl-fallback strong{font:normal 50px Georgia,serif}
+@media(max-width:650px){h1{font-size:clamp(44px,11vw,62px);bottom:100px}footer small{font-size:10px}footer{bottom:22px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+html.embedded h1,html.embedded footer{display:none!important}
+/* Playable third-person butterfly. The HUD remains inside the meadow iframe so
+   it works identically on the homepage and in standalone meadow.html. */
+#flyHud[hidden],#flyStart[hidden],#emuStart[hidden]{display:none!important}
+#pilotEntrances{position:fixed;z-index:8;right:clamp(18px,3vw,44px);bottom:143px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;max-width:calc(100vw - 30px)}
+#pilotEntrances button{border-radius:22px;border:1px solid #f5ffecb8;padding:10px 17px;background:#eaffddde;color:#315b46;box-shadow:0 8px 30px #263a2945;backdrop-filter:blur(12px);font:bold 14px system-ui;cursor:pointer;touch-action:manipulation}
+#emuStart{background:#e5f1edeb!important;border-color:#dbf7eec7!important;color:#2a554b!important}
+.emu-download-note{display:block;font:600 11px/1.35 system-ui,sans-serif;opacity:.76;letter-spacing:.01em;margin-top:2px}
+#pilotEntrances button:hover{background:#f7ffee!important}
+html.embedded #pilotEntrances,html.flight-active #pilotEntrances{display:none!important}
+#flyHud{position:fixed;inset:0;z-index:11;pointer-events:none;color:#fffbe9;font:13px/1.4 system-ui,sans-serif;text-shadow:0 2px 8px #0b242de8}
+.fly-top{position:absolute;left:max(16px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));background:#1c423e94;border:1px solid #ffffff47;border-radius:15px;padding:11px 15px;backdrop-filter:blur(9px)}
+.fly-top strong{display:block;font:italic 25px Georgia,serif;margin:0 0 5px}
+.fly-metrics{display:flex;gap:16px;flex-wrap:wrap;font-variant-numeric:tabular-nums}.fly-metrics b{font-size:15px}
+.fly-mode{color:#e5f8cc;letter-spacing:.08em;font-size:11px}.fly-mode[data-mode="PERCHED"]{color:#e6d6a9}
+.fly-instructions{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;padding:9px 15px;border-radius:18px;background:#1b3e3c94;border:1px solid #ffffff30}
+.fly-alert{margin-top:7px;color:#f9dda0;font-size:12px;font-weight:600;min-height:16px}.fly-alert:empty{display:none}
+.fly-stamina{display:inline-block;vertical-align:middle;background:#ffffff4c;border:1px solid #ffffff79;border-radius:9px;width:72px;height:8px;overflow:hidden}.fly-stamina span{display:block;height:100%;background:#d4ed96;width:100%}
+.fly-touch{display:none;position:absolute;inset:auto 0 max(18px,env(safe-area-inset-bottom));padding:0 max(12px,env(safe-area-inset-left)) 0 max(12px,env(safe-area-inset-right));justify-content:space-between;align-items:end;gap:12px}
+/* Self-centring analogue thumbstick: small inputs are gentle, full deflection is full authority. */
+.fly-joystick{position:relative;flex:none;width:112px;height:112px;border-radius:50%;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:radial-gradient(circle,#a4c6b260,#1d443e9c);border:2px solid #f1ffe4a3;box-shadow:inset 0 3px 17px #0f322a9a,0 4px 18px #13292169}
+.fly-joystick::before,.fly-joystick::after{content:'';position:absolute;pointer-events:none;background:#e7fbd04d}.fly-joystick::before{left:50%;top:16px;bottom:16px;width:1px}.fly-joystick::after{top:50%;left:16px;right:16px;height:1px}
+.fly-stick{position:absolute;left:50%;top:50%;width:49px;height:49px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;background:linear-gradient(135deg,#f1ffed,#a9d6af);border:2px solid white;box-shadow:0 3px 12px #102a2899;transition:transform .12s ease-out}
+.fly-joystick.engaged .fly-stick{transition:none;background:linear-gradient(135deg,#fcfff2,#c4eead)}
+.fly-flap{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:#ecf8dfd6;border:1px solid #fff;border-radius:14px;color:#365f50;font:bold 16px system-ui;box-shadow:0 3px 13px #1329214b;width:94px;height:75px}.fly-flap:active{background:#a8dd97}
+@media(pointer:coarse),(max-width:680px){.fly-touch{display:flex}
+.fly-instructions{display:none}.fly-top{padding:9px 10px}.fly-top strong{font-size:20px}.fly-metrics{gap:8px;font-size:11px}.fly-metrics b{font-size:12px}.fly-stamina{width:40px}}
+@media(max-height:490px){.fly-top strong{display:none}.fly-top{padding:6px 9px}.fly-joystick{width:94px;height:94px}.fly-stick{width:43px;height:43px}.fly-flap{height:50px}}
+
+/* Only visible while piloting. Race targets are drawn in the 3D world. */
+.fly-race{margin-top:7px;color:#f6f4dc;font:600 12px/1.5 system-ui,sans-serif;max-width:440px}
+.fly-race:empty{display:none}.fly-race b{color:#ffdf85}
+.race-direction{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);font:700 13px/1.35 system-ui;text-align:center;color:#fff7e1;background:#243c3ca6;border:1px solid #fff9c471;padding:7px 11px;border-radius:19px;white-space:nowrap}
+.race-direction[hidden],.race-toast[hidden]{display:none!important}
+.race-toast{position:absolute;top:23%;left:50%;transform:translateX(-50%);width:max-content;max-width:84vw;text-align:center;padding:15px 22px;background:#243c42d9;border:1px solid #f5e5a7a6;border-radius:17px;box-shadow:0 8px 26px #10272888;font:600 16px/1.6 system-ui,sans-serif}
+.race-toast strong{display:block;font:normal 28px Georgia,serif;color:#fff0af}
+@media(max-width:680px){.fly-race{font-size:10px;max-width:260px}.race-toast{top:28%;font-size:13px}.race-toast strong{font-size:21px}}
+
+/* Mobile cockpit: full-screen flight is optional; touch steering always works. */
+.fly-tools{pointer-events:none;position:absolute;top:max(12px,env(safe-area-inset-top));right:max(13px,env(safe-area-inset-right));display:flex;flex-direction:column;align-items:stretch;gap:5px;width:132px}
+.fly-tools button,.fly-tools a{pointer-events:auto;border:1px solid #fff7d5a1;border-radius:12px;background:#21483fbd;color:#fffbea;padding:7px 9px;min-height:35px;text-align:center;text-decoration:none;font:600 12px/1.15 system-ui,sans-serif;backdrop-filter:blur(9px);touch-action:manipulation}
+.fly-tools button[aria-pressed=true]{background:#407e64e8;border-color:#d5ffb7}
+.fly-tools button[hidden],.fly-tools a[hidden]{display:none!important}
+#flySensorStatus{max-width:160px;text-align:center;color:#fffbd5;font:11px/1.28 system-ui,sans-serif;text-shadow:0 1px 5px #183629}
+#flySensorStatus:empty{display:none}
+html.flight-active h1,html.flight-active footer,html.flight-fullscreen #pilotEntrances{display:none!important}
+html.tilt-steering .fly-touch{justify-content:flex-end}
+html.tilt-steering .fly-joystick{display:none}
+@media(pointer:fine){#flySensor,#flyRecenter,#flyInvert{display:none!important}}
+@media(pointer:coarse) and (orientation:landscape) and (max-height:520px){.fly-tools{top:max(5px,env(safe-area-inset-top));right:max(7px,env(safe-area-inset-right));width:112px;gap:3px}.fly-tools button,.fly-tools a{min-height:29px;padding:4px 6px;font-size:10px}.fly-top{max-width:calc(100vw - 145px)}.fly-touch{bottom:max(6px,env(safe-area-inset-bottom))}.fly-flap{height:63px;width:84px}}
+
+/* Robot-only assets are loaded on demand after the secret rock landing. */
+#emuWake[hidden],#emuLoader[hidden],#emuLeave[hidden]{display:none!important}
+#emuWake{position:fixed;z-index:17;left:50%;transform:translateX(-50%);bottom:clamp(145px,23vh,225px);
+ padding:12px 20px;border:1px solid #fff9cc;border-radius:18px;color:#254637;
+ background:#edf8ddeb;box-shadow:0 8px 35px #172b2780;cursor:pointer;font:700 14px system-ui;max-width:90vw}
+#emuLoader{position:fixed;z-index:20;left:50%;top:35%;transform:translateX(-50%);width:min(300px,85vw);
+ padding:18px 22px;border-radius:18px;background:#163631ea;border:1px solid #a8dfb477;color:#f0ffe7;
+ box-shadow:0 16px 60px #061b1bd0;font:13px/1.55 system-ui;text-align:center}
+#emuLoader strong{display:block;font:600 18px Georgia,serif;margin-bottom:7px}
+#emuLoader progress{width:100%;height:11px;margin:8px 0;accent-color:#a6dd9a}
+#emuDownloadDetail{font:600 12px/1.5 ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#d6efcd;margin-top:2px}
+#emuLeave{border:1px solid #fff7d5a1;border-radius:12px;background:#21483fbd;color:#fffbea;padding:7px 10px;min-height:35px;cursor:pointer}

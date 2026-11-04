@@ -21,13 +21,30 @@ A small, living WebGL landscape: rolling grassland, a procedural apple tree and 
 | File | Purpose |
 | --- | --- |
 | `index.html` | Simple entry point for GitHub Pages and static hosting. |
-| `meadow.html` | Main WebGL scene, procedural world, flight, racing and HUD. |
-| `ground-lizard.js` | Standalone lizard simulation, loaded by relative path. |
+| `meadow.html` | Thin HTML shell for the standalone/embedded homepage and pilot HUD. |
+| `assets/meadow.css` | Responsive presentation and HUD styling. |
+| `assets/meadow.js` | WebGL world and renderer, procedural scenery, butterfly/race gameplay, camera and input. |
+| `assets/flight-physics.js` | Pure, independently tested shared player/NPC lift and drag model. |
+| `ground-lizard.js` | Articulated IK lizard, started only after the WebGL world's bridge is ready. |
 | `skybox.png` | Local sky panorama, loaded by relative path. |
 | `emu/champion.emupolicy` | Public trained neural policy (~0.89 MB); loaded only on request. |
 | `emu/emu.js`, `emu/policy.js` | Byte-progress loader and browser inference. |
 | `emu/physics/dist/` | Prebuilt MuJoCo JavaScript runtime and ~10.93 MB WASM; no server build needed. |
 | `DEPLOY_WINDOWS_NGINX.md` | Production deployment for the existing Windows nginx + private PHP homepage. |
+
+## Architecture and changes
+
+The Meadow scene uses ordinary browser **ES modules** and static files — no
+bundler or production build. The HTML is deliberately small; the scene,
+styling and independent aerodynamic calculations have clear owners.
+`ground-lizard.js` starts after the world bridge has initialised, and
+MuJoCo is still imported **only after** selecting the robot.
+
+The procedural landscape and racing/rendering systems stay inside the scene
+engine for now because they share live meshes, state and WebGL buffers. We do
+not split them into artificial wrapper modules that would pass dozens of
+mutable dependencies around. See [MEADOW_ARCHITECTURE.md](MEADOW_ARCHITECTURE.md)
+for the skeleton and the reason each retained subsystem exists.
 
 ## Running it
 

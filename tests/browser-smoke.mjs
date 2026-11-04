@@ -40,12 +40,56 @@ try{
  assert.equal(await page.locator('#webgl-fallback').isVisible(),false,'WebGL fallback shown');
  assert.equal(robotRequests.length,0,'no robot assets may download on an idle meadow');
  assert.match(await page.locator('#emuStart').textContent(),/≈12 MB download/);
+ await page.waitForFunction(()=>window.__meadowDiagnostics&&window.__lizardDiagnostics);
+ const resources=await page.evaluate(()=>performance.getEntriesByType('resource').map(x=>x.name));
+ for(const asset of ['/assets/meadow.css','/assets/meadow.js','/ground-lizard.js'])
+  assert.ok(resources.some(url=>url.endsWith(asset)),asset+' must load on a blank site');
+
+ // Camera drag persists only after mouse release, not on every move.
+ await page.evaluate(()=>{
+  window.__cameraSaves=[];
+  const original=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(key,value){
+   if(key==='meadow-camera-v14')window.__cameraSaves.push(value);
+   return original.call(this,key,value);
+  };
+ });
+ await page.mouse.move(650,430);
+ await page.mouse.down();
+ await page.mouse.move(940,330,{steps:8});
+ assert.equal(await page.evaluate(()=>window.__cameraSaves.length),0,
+  'landscape drag should not write localStorage on each pointermove');
+ await page.mouse.up();
+ assert.equal(await page.evaluate(()=>window.__cameraSaves.length),1,
+  'completed landscape drag should persist exactly once');
+ // Dispatch one trackpad wheel burst in the same task. Two real Playwright
+ // mouse.wheel awaits can be hundreds of ms apart on software-rendered CI.
+ await page.evaluate(()=>{
+  const canvas=document.getElementById('scene');
+  for(let i=0;i<2;i++)canvas.dispatchEvent(new WheelEvent('wheel',{
+   deltaY:130,bubbles:true,cancelable:true
+  }));
+ });
+ await page.waitForFunction(()=>window.__cameraSaves.length>=2,null,{timeout:3000});
+ await page.waitForTimeout(230);
+ assert.equal(await page.evaluate(()=>window.__cameraSaves.length),2,
+  'one burst of scroll input should persist once after the gesture finishes');
+
  await page.screenshot({path:'artifacts/emu-walk-button.png'});
  // Flying the butterfly should be genuinely free of all robot downloads.
  await page.locator('#flyStart').click();
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
  await page.waitForTimeout(300);
  assert.equal(robotRequests.length,0,'flying the butterfly must not fetch actor, JS or WASM');
+ assert.equal(await page.evaluate(()=>window.__meadowWorld.isPiloting()),true);
+ await page.evaluate(()=>{
+  window.__lizardGroundChecks=0;
+  const original=window.__meadowWorld.groundAt;
+  window.__meadowWorld.groundAt=(...args)=>{
+   window.__lizardGroundChecks++;
+   return original(...args);
+  };
+ });
 
  // Mouse orbit works in the AIR, not just on perches. It is camera-only.
  await page.mouse.move(980,570);
@@ -56,6 +100,8 @@ try{
  assert.ok(Math.abs(flightDrag.camera.yaw)>.3,'flying butterfly must orbit on drag');
  assert.ok(Math.abs(flightDrag.camera.elevation-.28)>.1,'drag tilts flying view');
  assert.equal(flightDrag.joystick.x,0,'dragging the view must not steer the joystick');
+ assert.equal(await page.evaluate(()=>window.__lizardGroundChecks),0,
+  'dragging a pilot camera must not make the lizard chase the mouse');
  await page.mouse.wheel(0,-480);
  const flightZoom=await page.evaluate(()=>window.__meadowFlight.state().camera.zoom);
  assert.ok(flightZoom<.85,'scrolling up zooms in on airborne butterfly');
