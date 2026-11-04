@@ -7,7 +7,7 @@
 import loadMujoco from '@mujoco/mujoco';
 import mujocoWasmUrl from '@mujoco/mujoco/mujoco.wasm?url';
 import {PolicyRunner} from '../../policy.js';
-import {SensorObserver,ArrayFlowObserver,TerrainActorObserver} from '../vendor/sensor.js';
+import {ArrayFlowObserver,TerrainActorObserver} from './sensors.js';
 import {sampleEpisodeCadence} from '../vendor/cadence.js';
 import {nextYawCommand} from '../vendor/controls.js';
 import {measuredAttitude} from '../vendor/attitude.js';
@@ -53,14 +53,14 @@ export class EmuBrowserSim {
     this.requestedYaw=0;
     this.autoReset=false;
     this.paused=false;
-    this.arraySensor=bundle.schema===3 &&
-      bundle.observation.sensor_contract?.sensor_model_revision===
-        'forward_tof4x4_array_plane_fit_no_tripod_2'
-      ? new ArrayFlowObserver(bundle.observation.sensor_contract) : null;
-    this.sensorObserver=[2,3].includes(bundle.schema) && !this.arraySensor
-      ? new SensorObserver(bundle.observation.sensor_contract) : null;
-    this.terrainObserver=bundle.schema===3
-      ? new TerrainActorObserver(bundle.observation.sensor_contract) : null;
+    // The deployed champion has exactly one observation contract: the
+    // physical 360-input actor with 4x4 ToF array + IMU/flow plane fit.
+    // Do not carry the discarded schema-8 tripod / debug sensor branches.
+    if(bundle.schema!==3||bundle.observation.sensor_contract?.sensor_model_revision!==
+       'forward_tof4x4_array_plane_fit_no_tripod_2')
+      throw new Error('Unsupported physical EMU observation contract');
+    this.arraySensor=new ArrayFlowObserver(bundle.observation.sensor_contract);
+    this.terrainObserver=new TerrainActorObserver(bundle.observation.sensor_contract);
     this.fallenFor=0;
     this.controlFrames=0;
     this.motorTravelRad=0;
@@ -161,11 +161,9 @@ export class EmuBrowserSim {
     this.prevAction.fill(0);
     this.prevRawTarget.fill(0);
     this.deliveredCtrl.fill(0);
-    if (this.sensorObserver) this.sensorObserver.reset(this.sensorPose(),this.sensorNoise);
-    if (this.terrainObserver) this.terrainObserver.reset(
+    this.terrainObserver.reset(
       this.terrainActorPose(),this.model,this.data,this.footGeomIds,this.sensorNoise);
-    if (this.arraySensor) this.arraySensor.reset(
-      this.sensorPose(),this.model,this.data,this.sensorNoise);
+    this.arraySensor.reset(this.sensorPose(),this.model,this.data,this.sensorNoise);
     const base = this.buildBaseObs();
     for (let i = 0; i < 4; i++) this.history[i].set(base);
     this.flattenHistory();
@@ -246,11 +244,9 @@ export class EmuBrowserSim {
     }
 
     this.phase = (this.phase + cdt * this.phaseRate() * TWO_PI) % TWO_PI;
-    if (this.sensorObserver) this.sensorObserver.advance(this.sensorPose(),this.sensorNoise);
-    if (this.terrainObserver) this.terrainObserver.advance(
+    this.terrainObserver.advance(
       this.terrainActorPose(),this.model,this.data,this.footGeomIds,this.sensorNoise);
-    if (this.arraySensor) this.arraySensor.advance(
-      this.sensorPose(),this.model,this.data,this.sensorNoise);
+    this.arraySensor.advance(this.sensorPose(),this.model,this.data,this.sensorNoise);
     const base = this.buildBaseObs();
     this.history[0].set(this.history[1]);
     this.history[1].set(this.history[2]);
@@ -340,9 +336,7 @@ export class EmuBrowserSim {
     const noisyGravity=[
       grav[0]+ns*.008*n0,grav[1]+ns*.008*n1,grav[2]-ns*.004*n0
     ];
-    const sensor = this.arraySensor
-      ? this.arraySensor.read(noisyGravity,this.terrainObserver.read())
-      : this.sensorObserver?.read(noisyGravity);
+    const sensor=this.arraySensor.read(noisyGravity,this.terrainObserver.read());
     if (sensor) {
       base[3]=sensor.gyro[0];
       base[4]=sensor.gyro[1];
