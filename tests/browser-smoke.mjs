@@ -339,33 +339,46 @@ try{
  await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
  assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly flight');
 
- // The old discoverable-rock path still works, but now looks like a cube.
- await page.goto('http://127.0.0.1:8765/meadow.html?emu-demo=1',{waitUntil:'domcontentloaded'});
- await page.locator('#emuWake').waitFor({state:'visible',timeout:30000});
- assert.equal(await page.locator('#emuStart').isVisible(),false,'entry controls hidden in pilot mode');
- await page.screenshot({path:'artifacts/emu-square-rock.png'});
- // Watch a DOM mutation rather than polling loading=true: a second WASM
- // instance can fail or finish during a polling gap on slow headless runners.
- // Seeing the loader become visible proves the explicit click started the
- // same opt-in path, without requiring another expensive engine bootstrap.
+ // The new discoverable arch uses a genuine swept-plane crossing and
+ // pauses butterfly flight. It never loads MuJoCo until Walk is selected.
+ await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-demo=1',{waitUntil:'domcontentloaded'});
+ await page.locator('#emuGateWalk').waitFor({state:'visible',timeout:30000});
+ assert.equal(await page.locator('#emuStart').isVisible(),false,'entry buttons hidden in pilot mode');
+ const encounter=await page.evaluate(()=>({
+  flight:window.__meadowFlight.state(),arch:window.__meadowEmu.state().arch
+ }));
+ assert.equal(encounter.flight.gatePaused,true,'fly-through must freeze the butterfly');
+ assert.ok(encounter.arch.center.every(Number.isFinite));
+ assert.ok(Math.abs(encounter.arch.x-18.5)<.01&&Math.abs(encounter.arch.z-16.8)<.01);
+ const frozen=encounter.flight.pos;
+ await page.evaluate(()=>window.__meadowStep(2));
+ assert.deepEqual(await page.evaluate(()=>window.__meadowFlight.state().pos),frozen,
+  'the butterfly must remain still until the visitor makes a choice');
+ await page.screenshot({path:'artifacts/emu-robot-arch-pause.png'});
+ await page.locator('#emuGateContinue').click();
+ assert.equal(await page.locator('#emuGatePrompt').isVisible(),false);
+ assert.equal(await page.evaluate(()=>window.__meadowFlight.state().gatePaused),false);
+ assert.ok((await page.evaluate(()=>window.__meadowFlight.state().speed))>1,
+  'Keep flying must restore real flight momentum');
+ await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-demo=1',{waitUntil:'domcontentloaded'});
+ await page.locator('#emuGateWalk').waitFor({state:'visible',timeout:30000});
  await page.evaluate(()=>{
-  window.__rockLoaderSeen=false;
+  window.__archLoaderSeen=false;
   const loader=document.getElementById('emuLoader');
   new MutationObserver(()=>{
-   if(!loader.hidden)window.__rockLoaderSeen=true;
+   if(!loader.hidden)window.__archLoaderSeen=true;
   }).observe(loader,{attributes:true,attributeFilter:['hidden']});
  });
- await page.locator('#emuWake').click();
+ await page.locator('#emuGateWalk').click();
  await page.waitForTimeout(350);
- const rockResult=await page.evaluate(()=>({
-  seen:window.__rockLoaderSeen,state:window.__meadowEmu?.state(),
+ const archResult=await page.evaluate(()=>({
+  seen:window.__archLoaderSeen,state:window.__meadowEmu?.state(),
   alert:document.getElementById('flyAlert')?.textContent
  }));
- console.log('Secret rock opt-in diagnostics:',JSON.stringify(rockResult).slice(0,900));
- assert.ok(rockResult.seen || rockResult.state.loading || rockResult.state.riding,
-  'the secret rock click must explicitly start the optional download');
+ console.log('Robot arch opt-in diagnostics:',JSON.stringify(archResult).slice(0,900));
+ assert.ok(archResult.seen||archResult.state.loading||archResult.state.riding,
+  'the EMU arch Walk button must explicitly start the optional robot download');
  assert.ok(!errors.some(e=>e.includes('pageerror')),errors.join('\n'));
- console.log('EMU physical rider, camera controls and rock opt-in browser smoke passed.');
-
+ console.log('EMU physical rider, figure-eight entrance and robot arch browser smoke passed.');
 
 }finally{await browser.close()}
