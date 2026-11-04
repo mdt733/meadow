@@ -25,7 +25,7 @@ test('on-demand runtime is official MuJoCo and never the old garden walking prox
  const packageJson=JSON.parse(read('../emu/physics/package.json'));
  assert.equal(packageJson.dependencies['@mujoco/mujoco'],'3.17.0');
  assert.match(loader,/import\('\.\/physics\/dist\/emu-physics\.js'\)/);
- assert.match(physics,/EmuBrowserSim\.create/);
+ assert.match(physics,/EmuPhysicsCore\.create/);
  assert.match(physics,/sim\.loadModel\(\)/);
  assert.match(physics,/sim\.advance\(dt\)/);
  assert.match(upstream,/this\.mujoco\.mj_step\(this\.model, this\.data\)/);
@@ -89,7 +89,7 @@ test('all ≈12 MB of robot assets are explicit, accounted for and opt-in',()=>{
  assert.ok(!adapter.includes("document.createElement"),"Meadow must be the only WebGL owner");
  assert.ok(adapter.includes("from './physical-sim.js'"));
  assert.match(upstream,/loadMujoco\(\{/);
- assert.match(adapter,/EmuBrowserSim\.create\(bundle,wasmBinary\)/);
+ assert.match(adapter,/EmuPhysicsCore\.create\(bundle,wasmBinary\)/);
 });
 test('special rock top, diamond, sides and collision radius are all half-sized',()=>{
  const html=read('../meadow.html');
