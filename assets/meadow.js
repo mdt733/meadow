@@ -1049,7 +1049,8 @@ function raceCrossing(a,b){
   // Only a successful FORWARD crossing of the following gate counts as a
   // miss. Passing near the current gate leaves it active for another loop.
   const correct=throughGate(a,b,current);
-  const skipped=!correct&&following&&throughGate(a,b,following);
+  // Neither near-tree crossing can be bypassed by the +5s skip rule.
+  const skipped=!correct&&following&&!current.milestone&&throughGate(a,b,following);
   if(correct||skipped){
    const missedNumber=race.index+1;
    if(skipped)race.penalty+=RACE_SKIP_PENALTY;
@@ -1064,6 +1065,10 @@ function raceCrossing(a,b){
     const result=race.finishedAt<best?'New personal best! 🦋':`Personal best ${best.toFixed(1)}s`;
     raceToast(`${name} · ${race.finishedAt.toFixed(1)}s`,
      result+(race.penalty?` · Includes +${race.penalty}s skipped-ring penalty`:''),8);
+   }else if(correct&&current.milestone==='low'){
+    raceToast('Through the tree corridor!','Now climb for the upper crossing above its crown.',3.5);
+   }else if(correct&&current.milestone==='high'){
+    raceToast('Above the apple tree!','Second pass complete — follow the rings back to the arch.',3.5);
    }else if(skipped){
     raceToast(`Ring ${missedNumber} skipped · +${RACE_SKIP_PENALTY}s`,'Next checkpoint reached — keep going!',2.5);
    }else if(race.index%4===0){raceToast(`Checkpoint ${race.index}/${race.gates.length}`,'Keep flying!',1.3)}
