@@ -2106,13 +2106,17 @@ if(new URLSearchParams(location.search).has('climb-demo')){
  flight.speed=3.0;flight.gamma=.10;flight.stalled=false;
  flight.climbDemo=true;
 }
-// Deterministic browser-only entrance preview. It uses the SAME swept gate
-// detector as physical flight; no robot assets are loaded without clicking.
-if(new URLSearchParams(location.search).has('emu-arch-demo')||
-   new URLSearchParams(location.search).has('emu-demo')){
+// Flight-entry acceptance route: start a few metres before the arch, and
+// use the REAL flying integration to cross it, from either direction.
+// There is no synthetic enterEmuGate call and no eager neural download.
+const archTrial=new URLSearchParams(location.search).get('emu-arch-flight-demo');
+if(archTrial!==null){
  beginFlight();
- const p=EMU_ARCH_CENTER,forward=mul(EMU_ARCH_FORWARD,2);
- enterEmuGate(sub(p,forward),add(p,forward));
+ const forward=mul(EMU_ARCH_FORWARD,archTrial==='reverse'?-1:1);
+ const b=flight.b;
+ b.pos=sub(EMU_ARCH_CENTER,mul(forward,2.6));
+ b.heading=Math.atan2(forward[0],forward[2]);b.pitch=.14;b.bank=0;b.energy=1;
+ flight.speed=4.3;flight.gamma=.035;flight.stalled=false;
 }
 window.__meadowEmu={start:startRobotRide,state:()=>({loaded:!!emu,riding:emuRiding,loading:emuLoading,
   pose:emu?.pose||null,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},commandYaw:emu?.sim?.commandTarget?.yaw??null,commandVx:emu?.sim?.commandTarget?.vx??null,headingTarget:emu?.sim?.headingTarget??null,arch:{x:EMU_ARCH_X,z:EMU_ARCH_Z,center:[...EMU_ARCH_CENTER],
