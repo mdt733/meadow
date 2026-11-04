@@ -27,11 +27,11 @@
 <h1>Go <em>outside.</em></h1>
 <footer><small>nothing to catch up on.</small><div class="buttons"><button class="round" id="pause" title="Pause animation" aria-label="Pause animation" aria-pressed="false"><svg id="pauseIcon" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button></div></footer>
 <div id="webgl-fallback"><div><strong>Go outside.</strong><p>A WebGL-capable browser is needed for the meadow.</p></div></div>
-<script defer src="assets/meadow.js"></script><script>
+<script type="module" src="assets/meadow.js"></script><script>
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==parent)return;
  if(event.data?.type==='meadow-flight-start'){window.__meadowFlight?.start();return}
  if(event.data?.type==='meadow-flight-stop'){window.__meadowFlight?.stop();return}
  if(event.data?.type==='meadow-emu-start'){window.__meadowEmu?.start();return}
 });
-</script><script src="ground-lizard.js" defer></script></body></html>
+</script></body></html>
