@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,statSync} from 'node:fs';
+import {readFileSync,statSync,existsSync} from 'node:fs';
 import {ROBOT_ASSETS,ROBOT_DOWNLOAD_BYTES} from '../emu/emu.js';
 import {parsePolicy,PolicyRunner} from '../emu/policy.js';
 
@@ -24,6 +24,12 @@ test('on-demand runtime is official MuJoCo and never the old garden walking prox
  const upstream=read('../emu/physics/src/physical-sim.js');
  const packageJson=JSON.parse(read('../emu/physics/package.json'));
  assert.equal(packageJson.dependencies['@mujoco/mujoco'],'3.17.0');
+ assert.equal(packageJson.dependencies.three,undefined,
+   'Three.js should not be a physics dependency');
+ assert.equal(existsSync(new URL('../emu/physics/vendor/',import.meta.url)),false,
+   'old viewer/vendor source directory should not come back');
+ assert.ok(statSync(new URL('../emu/physics/dist/emu-physics.js',import.meta.url)).size<200000,
+   'headless bundle must stay small; prevent reintroducing Three.js renderer');
  assert.match(loader,/import\('\.\/physics\/dist\/emu-physics\.js'\)/);
  assert.match(physics,/EmuPhysicsCore\.create/);
  assert.match(physics,/sim\.loadModel\(\)/);
