@@ -89,6 +89,8 @@ test('special rock top, diamond, sides and collision radius are all half-sized',
  assert.match(html,/const w=\.255,d=\.24,bevel=\.325/);
  assert.match(html,/const north=\[x,glyphY,z-\.15\]/);
  assert.match(html,/radius:\.46,triangles:colliders,emuWake:true/);
+ assert.match(html,/if\(site\.emuWake===true\)return false/,
+   'the optional robot entrance must remain safe from the lizard');
 });
 
 test('public entrance offers walk button and rock alternative, both lazy',()=>{
