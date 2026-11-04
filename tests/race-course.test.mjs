@@ -49,6 +49,13 @@ test('each difficulty is one continuous traversable course that closes through o
  for(const [i,gates] of all.entries()){
   assert.ok(gates.length>20,'large figure-eight needs meaningful checkpoints');
   let distanceM=0,maxUpGrade=0;
+  const low=gates.findIndex(g=>g.milestone==='low');
+  const high=gates.findIndex(g=>g.milestone==='high');
+  assert.ok(low>=0&&high>low,'must fly through low crossing then high crossing');
+  const lowPos=gates[low].pos,highPos=gates[high].pos;
+  assert.ok(Math.hypot(lowPos[0]-highPos[0],lowPos[2]-highPos[2])<.02,
+   'mandatory passes must share world X/Z close to the tree');
+  assert.ok(highPos[1]>lowPos[1]+5,'second mandatory ring must clear the canopy');
   const final=gates.at(-1);
   assert.ok(norm(final.pos.map((v,k)=>v-arch[k]))<1e-7,'finish in real stone arch');
   assert.ok(Math.abs(norm(final.normal)-1)<1e-6,'normal remains unit length');
