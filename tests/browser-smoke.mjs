@@ -11,6 +11,17 @@ const errors=[],requests=[],robotRequests=[];
 mkdirSync('artifacts',{recursive:true});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:800},deviceScaleFactor:1});
+ // No secret second WebGL context: Meadow alone owns all visual output.
+ // This records the creation calls before the page or optional robot loads.
+ await page.addInitScript(()=>{
+  const original=HTMLCanvasElement.prototype.getContext;
+  window.__meadowWebGLContexts=[];
+  HTMLCanvasElement.prototype.getContext=function(type,...args){
+   if(/^(webgl|webgl2|experimental-webgl)$/i.test(type))
+    window.__meadowWebGLContexts.push({canvas:this.id||'(detached)',kind:type});
+   return original.call(this,type,...args);
+  };
+ });
  page.on('console',msg=>{if(msg.type()==='error')errors.push('console: '+msg.text())});
  page.on('pageerror',error=>errors.push(String(error)));
  page.on('response',response=>{
@@ -120,6 +131,9 @@ try{
              'max:',Math.max(...progressSamples.map(p=>p.value)));
  assert.equal(state.loaded,true);
  assert.equal(state.riding,true);
+ const glContexts=await page.evaluate(()=>window.__meadowWebGLContexts);
+ assert.deepEqual(glContexts.map(x=>x.canvas),['scene'],
+  'one visible Meadow WebGL renderer only; no hidden physics-viewer canvas');
  // Robot's view orbit is equally independent of the actor's control commands.
  await page.mouse.move(1020,580);
  await page.mouse.down();
