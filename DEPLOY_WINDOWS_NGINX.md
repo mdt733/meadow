@@ -19,7 +19,8 @@ C:\nginx\html\
   meadow.html                             Small markup shell
   assets\
     meadow.css                             Scene UI and responsive styles
-    meadow.js                              Main WebGL scene, simulation and controls
+    meadow.js                              WebGL scene ES module and controllers
+    flight-physics.js                     Shared butterfly lift/drag model
   ground-lizard.js                        Script referenced by meadow.html
   skybox.png                              Image referenced by meadow.html
   emu\
@@ -35,6 +36,7 @@ C:\nginx\html\
 After deployment:
 - `https://mdt733.ddns.net/meadow.html`
 - `https://mdt733.ddns.net/assets/meadow.js`
+- `https://mdt733.ddns.net/assets/flight-physics.js`
 - `https://mdt733.ddns.net/assets/meadow.css`
 - `https://mdt733.ddns.net/emu/champion.emupolicy`
 - `https://mdt733.ddns.net/emu/physics/dist/emu-physics.js`
@@ -75,6 +77,7 @@ $files = @(
   'meadow.html',
   'assets/meadow.css',
   'assets/meadow.js',
+  'assets/flight-physics.js',
   'ground-lizard.js',
   'skybox.png',
   'emu/champion.emupolicy',
@@ -109,7 +112,7 @@ foreach ($rel in $expected.Keys) {
   }
 }
 
-# Back up, then replace ONLY these ten files. The PHP homepage is untouched.
+# Back up, then replace ONLY these eleven files. The PHP homepage is untouched.
 foreach ($rel in $files) {
   $live = Join-Path $root $rel
   if (Test-Path -LiteralPath $live) {
@@ -141,7 +144,7 @@ so the exact MIME type is not required for streaming compilation.
 - Review the public model exposure and front-page integration.
 - The release should update the public top-level README. Do **not** publish
   private PHP homepage files from the public Meadow repo.
-- Verify the stylesheet and script load from `assets/` (200 responses), and
+- Verify the stylesheet and both JS modules load from `assets/` (200 responses), and
   that the lizard and ordinary meadow render before any robot download.
 - Smoke-test live `meadow.html`, then click **Walk the robot** and verify the
   ~12 MB progress bar and walking. Verify existing homepage and `/hangar/`
