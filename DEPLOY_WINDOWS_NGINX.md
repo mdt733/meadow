@@ -21,6 +21,7 @@ C:\nginx\html\
     meadow.css                             Scene UI and responsive styles
     meadow.js                              WebGL scene ES module and controllers
     flight-physics.js                     Shared butterfly lift/drag model
+    race-course.js                        3-D figure-eight course generator
   ground-lizard.js                        Script referenced by meadow.html
   skybox.png                              Image referenced by meadow.html
   emu\
@@ -37,6 +38,7 @@ After deployment:
 - `https://mdt733.ddns.net/meadow.html`
 - `https://mdt733.ddns.net/assets/meadow.js`
 - `https://mdt733.ddns.net/assets/flight-physics.js`
+- `https://mdt733.ddns.net/assets/race-course.js`
 - `https://mdt733.ddns.net/assets/meadow.css`
 - `https://mdt733.ddns.net/emu/champion.emupolicy`
 - `https://mdt733.ddns.net/emu/physics/dist/emu-physics.js`
@@ -54,7 +56,7 @@ or **Wake EMU** don't fetch the heavy actor and WASM files.
 ## Safe PowerShell deployment (run on the Windows nginx server)
 
 **Merge and approve the relevant cleanup PR before deploying from `main`.**
-The new static asset paths are introduced by draft PR #3. The existing
+The figure-eight flight code is introduced by draft PR #4. The existing
 server's private PHP homepage must not be overwritten.
 
 The script below requires PowerShell and outbound HTTPS but **not Git** on
@@ -78,6 +80,7 @@ $files = @(
   'assets/meadow.css',
   'assets/meadow.js',
   'assets/flight-physics.js',
+  'assets/race-course.js',
   'ground-lizard.js',
   'skybox.png',
   'emu/champion.emupolicy',
@@ -112,7 +115,7 @@ foreach ($rel in $expected.Keys) {
   }
 }
 
-# Back up, then replace ONLY these eleven files. The PHP homepage is untouched.
+# Back up, then replace ONLY these twelve files. The PHP homepage is untouched.
 foreach ($rel in $files) {
   $live = Join-Path $root $rel
   if (Test-Path -LiteralPath $live) {
@@ -136,7 +139,7 @@ so the exact MIME type is not required for streaming compilation.
 ## Before merging / publishing
 
 - The original EMU PR #1 and headless cleanup PR #2 are already merged.
-  This scene architecture cleanup remains **draft PR #3**, awaiting approval.
+  The new robot arch and race update remain **draft PR #4**, awaiting approval.
 - Run the repository's browser checks (optional downloads, butterfly-only
   zero robot downloads, real policy/MuJoCo controls, rock entry, camera).
 - Make sure the committed `emu/physics/dist/` bundle and WASM are present:
@@ -144,7 +147,7 @@ so the exact MIME type is not required for streaming compilation.
 - Review the public model exposure and front-page integration.
 - The release should update the public top-level README. Do **not** publish
   private PHP homepage files from the public Meadow repo.
-- Verify the stylesheet and both JS modules load from `assets/` (200 responses), and
+- Verify the stylesheet and all three JS modules load from `assets/` (200 responses), and
   that the lizard and ordinary meadow render before any robot download.
 - Smoke-test live `meadow.html`, then click **Walk the robot** and verify the
   ~12 MB progress bar and walking. Verify existing homepage and `/hangar/`
