@@ -834,6 +834,10 @@ function perchPoint(site,t=time){
 }
 function vulnerablePerch(site){
  if(!site)return false;
+ // The little marked EMU stone is an opt-in entrance, not lizard bait.
+ // At half size it is otherwise low enough for the lizard to steal the
+ // butterfly before a visitor can choose whether to download the robot.
+ if(site.emuWake===true)return false;
  const p=perchPoint(site);
  if(Math.hypot(p[0],p[2])>14.8)return false;
  if(site.type==='ground'||site.type==='flower')return true;
