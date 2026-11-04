@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {wingForces,NPC_AERO,FLY} from '../assets/flight-physics.js';
+import {wingForces,NPC_AERO,FLY,RACE_FLY} from '../assets/flight-physics.js';
 
 // One tested aerodynamic kernel drives the player and the ambient butterflies;
 // neither path may silently become a scripted or visually faked flight model.
@@ -32,4 +32,15 @@ test('player and ambient physics remain finite across their working envelope',()
    }
   }
  }
+});
+
+test('race-only wingbeats improve physical climb thrust without changing relaxed flight',()=>{
+ assert.equal(FLY.flapImpulse,.64,'normal Meadow flight retains the original impulse');
+ assert.equal(FLY.flapLift,3.4,'normal Meadow flight retains the original wing lift');
+ assert.ok(RACE_FLY.flapImpulse>FLY.flapImpulse);
+ assert.ok(RACE_FLY.flapCost<FLY.flapCost);
+ const ordinary=wingForces(2,.3,0,true,Math.PI/2,FLY);
+ const racing=wingForces(2,.3,0,true,Math.PI/2,RACE_FLY);
+ assert.ok(racing.lift>ordinary.lift,'race climb is real lift from a stronger flap');
+ assert.ok(Math.abs(racing.drag-ordinary.drag)<1e-8,'no magical drag disappearance');
 });
