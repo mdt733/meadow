@@ -393,6 +393,7 @@ try{
 
  // The new discoverable arch uses a genuine swept-plane crossing and
  // pauses butterfly flight. It never loads MuJoCo until Walk is selected.
+ const downloadsBeforeGate=robotRequests.length;
  await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-flight-demo=1',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
  await page.evaluate(()=>window.__meadowStep(1.4));
@@ -402,6 +403,8 @@ try{
   flight:window.__meadowFlight.state(),arch:window.__meadowEmu.state().arch
  }));
  assert.equal(encounter.flight.gatePaused,true,'fly-through must freeze the butterfly');
+ assert.equal(robotRequests.length,downloadsBeforeGate,
+  'simply crossing the new arch must not download any robot binaries');
  assert.ok(encounter.arch.center.every(Number.isFinite));
  assert.ok(Math.abs(encounter.arch.x-18.5)<.01&&Math.abs(encounter.arch.z-16.8)<.01);
  const frozen=encounter.flight.pos;
