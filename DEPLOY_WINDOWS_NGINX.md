@@ -16,7 +16,10 @@ All files below retain their **exact relative paths**:
 ```text
 C:\nginx\html\
   index.php                               EXISTING private homepage; leave intact
-  meadow.html                             Meadow WebGL scene
+  meadow.html                             Small markup shell
+  assets\
+    meadow.css                             Scene UI and responsive styles
+    meadow.js                              Main WebGL scene, simulation and controls
   ground-lizard.js                        Script referenced by meadow.html
   skybox.png                              Image referenced by meadow.html
   emu\
@@ -31,6 +34,8 @@ C:\nginx\html\
 
 After deployment:
 - `https://mdt733.ddns.net/meadow.html`
+- `https://mdt733.ddns.net/assets/meadow.js`
+- `https://mdt733.ddns.net/assets/meadow.css`
 - `https://mdt733.ddns.net/emu/champion.emupolicy`
 - `https://mdt733.ddns.net/emu/physics/dist/emu-physics.js`
 - `https://mdt733.ddns.net/emu/physics/dist/assets/mujoco-CGsuVDfV.wasm`
@@ -46,8 +51,9 @@ or **Wake EMU** don't fetch the heavy actor and WASM files.
 
 ## Safe PowerShell deployment (run on the Windows nginx server)
 
-**First merge PR #1 to `main` after approval and green checks.** Until then,
-these `main` URLs still refer to the old Meadow without EMU.
+**Merge and approve the relevant cleanup PR before deploying from `main`.**
+The new static asset paths are introduced by draft PR #3. The existing
+server's private PHP homepage must not be overwritten.
 
 The script below requires PowerShell and outbound HTTPS but **not Git** on
 the server. It downloads a specific set of committed static files to a staging
@@ -67,6 +73,8 @@ $backup = Join-Path 'C:\nginx\meadow-backups' $stamp
 
 $files = @(
   'meadow.html',
+  'assets/meadow.css',
+  'assets/meadow.js',
   'ground-lizard.js',
   'skybox.png',
   'emu/champion.emupolicy',
@@ -101,7 +109,7 @@ foreach ($rel in $expected.Keys) {
   }
 }
 
-# Back up, then replace ONLY these eight files. The PHP homepage is untouched.
+# Back up, then replace ONLY these ten files. The PHP homepage is untouched.
 foreach ($rel in $files) {
   $live = Join-Path $root $rel
   if (Test-Path -LiteralPath $live) {
@@ -124,8 +132,8 @@ so the exact MIME type is not required for streaming compilation.
 
 ## Before merging / publishing
 
-- PR #1 remains a draft until explicitly approved; protected `main` is not
-  updated by staging or testing this branch.
+- The original EMU PR #1 and headless cleanup PR #2 are already merged.
+  This scene architecture cleanup remains **draft PR #3**, awaiting approval.
 - Run the repository's browser checks (optional downloads, butterfly-only
   zero robot downloads, real policy/MuJoCo controls, rock entry, camera).
 - Make sure the committed `emu/physics/dist/` bundle and WASM are present:
@@ -133,6 +141,8 @@ so the exact MIME type is not required for streaming compilation.
 - Review the public model exposure and front-page integration.
 - The release should update the public top-level README. Do **not** publish
   private PHP homepage files from the public Meadow repo.
+- Verify the stylesheet and script load from `assets/` (200 responses), and
+  that the lizard and ordinary meadow render before any robot download.
 - Smoke-test live `meadow.html`, then click **Walk the robot** and verify the
   ~12 MB progress bar and walking. Verify existing homepage and `/hangar/`
   links still work. A hard browser refresh may be necessary after deployment.
