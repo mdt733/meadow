@@ -63,7 +63,7 @@ test('the robot spawns in a broad outer-meadow clearing with a camera independen
  assert.match(html,/Math\.exp\(-3\.2\*dt\)/);
  assert.match(html,/emuCameraRig=null/);
 });
-test('all 12.0 MB of robot assets are explicit, accounted for and opt-in',()=>{
+test('all ≈12 MB of robot assets are explicit, accounted for and opt-in',()=>{
  const html=read('../meadow.html'),loader=read('../emu/emu.js');
  const upstream=read('../emu/physics/src/physical-sim.js');
  const adapter=read('../emu/physics/src/index.js');
@@ -75,10 +75,10 @@ test('all 12.0 MB of robot assets are explicit, accounted for and opt-in',()=>{
   assert.equal(statSync(new URL('../emu/'+asset.path.replace(/^\.\//,''),import.meta.url)).size,
                asset.bytes,asset.name+' manifest must match the real file size');
  }
- assert.match(html,/Walk the robot <span class="emu-download-note">\(12\.0 MB download\)<\/span>/);
+ assert.match(html,/Walk the robot <span class="emu-download-note">\(≈12 MB download\)<\/span>/);
  assert.match(html,/id="emuDownloadDetail"/);
  assert.match(html,/id="emuProgress"/);
- assert.match(html,/Wake EMU \(12\.0 MB download\)/);
+ assert.match(html,/Wake EMU \(≈12 MB download\)/);
  assert.match(loader,/response\.body\?\.getReader/);
  assert.match(loader,/report\(value\.byteLength,asset\.stage\)/);
  assert.match(loader,/wasmBinary=await downloadBytes/);
