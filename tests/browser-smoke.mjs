@@ -192,6 +192,10 @@ try{
  assert.equal(redStart.race.course,2,'red entry should select the hardest circuit');
  assert.ok(redStart.race.total>30,'red should produce a full long figure eight');
  assert.equal(redStart.race.courseGates.length,redStart.race.total);
+ const treeMarkers=redStart.race.courseGates.filter(g=>g.milestone);
+ assert.deepEqual(treeMarkers.map(g=>g.milestone),['low','high'],
+  'red race must contain two mandatory crossing rings at the tree');
+ assert.ok(treeMarkers[1].pos[1]>treeMarkers[0].pos[1]+5);
  const liveFirst=redStart.race.courseGates[0],liveLast=redStart.race.courseGates.at(-1);
  assert.ok(liveFirst.pos.every(Number.isFinite));
  assert.ok(liveLast.pos.every(Number.isFinite));
