@@ -34,12 +34,15 @@ test('on-demand runtime is official MuJoCo and never the old garden walking prox
 });
 test('MuJoCo collision heightfield uses Meadow geometry, not a flat plane',()=>{
  const source=read('../emu/physics/src/index.js');
- const terrain=read('../emu/physics/vendor/terrain.js');
+ const terrain=read('../emu/physics/src/terrain.js');
  assert.match(source,/heightAt\(origin\.x-my,origin\.z\+mx\)/);
  assert.match(source,/PARK_RES=257/);
  assert.match(source,/zOffset:minimum/);
  assert.match(source,/sim\.meadowPark=sampleMeadowPark/);
  assert.match(terrain,/park\.zOffset/);
+ assert.match(terrain,/withMeadowTerrain/);
+ assert.doesNotMatch(terrain,/depthCourseXml|generateTerrainPark|withGentleCourse/,
+   'deployed physics must not retain viewer obstacle classrooms');
 });
 test('Meadow body + heading + collision terrain all share right-positive coordinates',()=>{
  const source=read('../emu/physics/src/index.js');
