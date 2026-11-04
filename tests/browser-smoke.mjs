@@ -128,29 +128,6 @@ try{
  assert.equal(await page.locator('#emuLeave').isVisible(),true);
  assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly riding EMU');
  await page.screenshot({path:'artifacts/emu-butterfly-rider.png'});
- // Observe actual turning response over many control frames, rather than
- // assuming the command sign alone proves the physical direction of travel.
- await page.keyboard.down('d');
- const rightTurn=await page.evaluate(()=>{
-  const before=window.__meadowEmu.state();
-  window.__meadowStep(1.0);
-  return {before,after:window.__meadowEmu.state()};
- });
- await page.keyboard.up('d');
- await page.keyboard.down('a');
- const leftTurn=await page.evaluate(()=>{
-  const before=window.__meadowEmu.state();
-  window.__meadowStep(1.0);
-  return {before,after:window.__meadowEmu.state()};
- });
- await page.keyboard.up('a');
- console.log('Physical rider turn diagnostics:',JSON.stringify({
-  right:{before:rightTurn.before.pose.heading,after:rightTurn.after.pose.heading,
-         falls:rightTurn.after.pose.falls,command:rightTurn.after.commandYaw},
-  left:{before:leftTurn.before.pose.heading,after:leftTurn.after.pose.heading,
-        falls:leftTurn.after.pose.falls,command:leftTurn.after.commandYaw}
- }));
-
  await page.locator('#flyExit').click();
  await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
  state=await page.evaluate(()=>window.__meadowEmu.state());
@@ -179,4 +156,49 @@ try{
  await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:90000});
  assert.deepEqual(errors,[],errors.join('\n'));
  console.log('EMU direct-launch and rock-landing browser smoke passed.');
+
+ // Isolate the longer turning examination AFTER all navigation/re-entry tests:
+ // extra simulation frames must not slow or destabilize the normal smoke path.
+ const screenOrientation=await page.evaluate(()=>{
+  const p=window.__meadowEmu.state().pose;
+  const project=window.__meadowWorld.project;
+  return {minusX:project(p.x-1,p.y+.15,p.z+3),
+          plusX:project(p.x+1,p.y+.15,p.z+3)};
+ });
+ assert.ok(screenOrientation.minusX.x>screenOrientation.plusX.x,
+  'Meadow chase view visually projects world negative-X to screen RIGHT');
+ await page.keyboard.down('w');
+ await page.keyboard.down('d');
+ const rightTurn=await page.evaluate(()=>{
+  const before=window.__meadowEmu.state();
+  window.__meadowStep(1.0);
+  return {before,after:window.__meadowEmu.state()};
+ });
+ await page.keyboard.up('d');
+ await page.keyboard.down('a');
+ const leftTurn=await page.evaluate(()=>{
+  const before=window.__meadowEmu.state();
+  window.__meadowStep(1.0);
+  return {before,after:window.__meadowEmu.state()};
+ });
+ await page.keyboard.up('a');
+ await page.keyboard.up('w');
+ const angles={
+  right:rightTurn.after.pose.heading-rightTurn.before.pose.heading,
+  left:leftTurn.after.pose.heading-leftTurn.before.pose.heading
+ };
+ console.log('Screen-right physical rider turn diagnostics:',JSON.stringify({
+  right:{...angles,before:rightTurn.before.pose.heading,
+         after:rightTurn.after.pose.heading,falls:rightTurn.after.pose.falls,
+         command:rightTurn.after.commandYaw},
+  left:{before:leftTurn.before.pose.heading,after:leftTurn.after.pose.heading,
+        falls:leftTurn.after.pose.falls,command:leftTurn.after.commandYaw},
+  camera:screenOrientation
+ }));
+ assert.ok(rightTurn.after.commandYaw>.1,'D must request screen-right steering');
+ assert.ok(leftTurn.after.commandYaw<-.1,'A must request screen-left steering');
+ assert.ok(angles.right<-.1,
+  'physical D turn must rotate toward world negative-X, which camera shows on screen RIGHT');
+ assert.ok(angles.left>-.02,
+  'physical A turn must oppose the right turn rather than continuing left');
 }finally{await browser.close()}
