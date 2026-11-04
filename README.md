@@ -13,7 +13,7 @@ A small, living WebGL landscape: rolling grassland, a procedural apple tree and 
 - Playable butterfly flight with flapping, gliding, nectar, landing and perching.
 - Hidden stone arch leading to three aerial race circuits with boosts, time penalties and local best-times.
 - Mobile controls including a thumbstick, optional phone tilt steering and fullscreen support where the browser allows it.
-- **Optional EMU robot ride:** the pinned 260M-step trained neural actor runs six physical actuators through real MuJoCo WASM, on a Meadow-derived collision heightfield. The **Walk the robot (12.0 MB download)** button shows byte-accurate progress; butterfly-only visitors download none of these robot extras.
+- **Optional EMU robot ride:** the pinned 260M-step trained neural actor runs six physical actuators through real MuJoCo WASM, on a Meadow-derived collision heightfield. The **Walk the robot (~12 MB download)** button shows byte-accurate progress; butterfly-only visitors download none of these robot extras.
 - Third-person **mouse/touch drag orbit** and **wheel/pinch zoom** for both flying butterfly and walking EMU. Release eases back into follow mode; the chosen zoom persists.
 
 ## Files
@@ -57,7 +57,7 @@ Opening `meadow.html` directly may still work, but some browsers restrict WebGL 
 | Perch | Approach surfaces gently | Same |
 | Look around while flying, perched or riding | Drag scene; release to resume follow camera | Drag scene; release to resume follow camera |
 | Zoom while piloting | Mouse wheel / trackpad | Two-finger pinch on scene |
-| Walk EMU (optional 12.0 MB) | Click **Walk the robot**, W/S speed, A/D steering, Space dismount | Walk button, joystick, **Fly away** |
+| Walk EMU (optional ~12 MB) | Click **Walk the robot**, W/S speed, A/D steering, Space dismount | Walk button, joystick, **Fly away** |
 | Leave flight | `Esc` or **Exit** | **Exit** |
 
 On mobile, **Recenter** makes the current phone angle neutral. Motion sensing requires HTTPS or localhost and may require permission.
