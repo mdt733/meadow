@@ -334,7 +334,6 @@ for(let i=0;i<8900;i++){
 // ── Vegetation, dynamic wildlife and lightweight perch surfaces ──
 const flowers=[];
 const perchSites=[],rockSurfaces=[];
-const EMU_ROCK={x:7,z:9.1}; // the conspicuous square teal-and-gold rock
 let flowerTouch={flower:null,until:0};
 function nudgeFlower(f){if(!f)return;flowerTouch={flower:f,until:time+1.5};
  for(let i=0;i<7;i++)pollen.push({pos:[f.x+range(-.08,.08),f.y+.08+range(0,.12),f.z+range(-.08,.08)],velocity:[range(-.24,.24),range(.09,.36),range(-.24,.24)],life:range(.45,1.25)});
@@ -403,6 +402,12 @@ for(let i=0;i<245;i++){
 const RACE_ARCH_X=16.8,RACE_ARCH_Z=-18.5,RACE_ARCH_SCALE=2/3;
 const RACE_ARCH_FORWARD=norm([.73,0,.68]);
 const RACE_ARCH_RIGHT=norm(cross(RACE_ARCH_FORWARD,[0,1,0]));
+// A second, welcoming arch is a quarter-turn around the central apple tree
+// from the original racing arch. Crossing its opening requires NO landing.
+const EMU_ARCH_X=18.5,EMU_ARCH_Z=16.8,EMU_ARCH_SCALE=1.02;
+const EMU_ARCH_FORWARD=norm([-.72,0,-.70]);
+const EMU_ARCH_RIGHT=norm(cross(EMU_ARCH_FORWARD,[0,1,0]));
+const EMU_ARCH_CENTER=[EMU_ARCH_X,height(EMU_ARCH_X,EMU_ARCH_Z)+1.31*EMU_ARCH_SCALE,EMU_ARCH_Z];
 const base=height(0,0),bark=[.29,.22,.16],lightBark=[.40,.30,.20];
 const mainPath=[];for(let j=0;j<=11;j++){let t=j/11;mainPath.push([.15*Math.sin(t*5),base+4.4*t,.13*Math.sin(t*8)])}
 tube(land,mainPath,mainPath.map((_,i)=>lerp(.68,.25,i/11)**1.08),bark,10);
@@ -614,34 +619,6 @@ for(let i=0;i<17;i++){
  addRock(p,[r,sy,r*range(.65,1.50)],[range(0,TAU),lookout?range(-.2,.2):range(-.52,.52),lookout?range(-.2,.2):range(-.62,.62)],depth,range(.86,1.17));
  sceneryCounts.rocks++;
 }
-// The one *square* stone in Meadow: a pale blue-green cubic cairn with a
-// golden butterfly-sized diamond on top. Actual top triangles are registered
-// with exactly the same rock landing code as the round natural stones.
-function addEmuCubeRock(){
- const x=EMU_ROCK.x,z=EMU_ROCK.z,baseY=height(x,z)-.0275,topY=height(x,z)+.31;
- const w=.255,d=.24,bevel=.325;
- const a=[x-w,topY,z-d],b=[x+w,topY,z-d],c=[x+w,topY,z+d],e=[x-w,topY,z+d];
- const aa=[x-bevel,baseY,z-bevel],bb=[x+bevel,baseY,z-bevel];
- const cc=[x+bevel,baseY,z+bevel],ee=[x-bevel,baseY,z+bevel];
- // Tall tapered sides visibly contrast with Meadow's small rounded rocks.
- land.two(aa,bb,b,a,[.34,.48,.48]);land.two(bb,cc,c,b,[.33,.50,.51]);
- land.two(cc,ee,e,c,[.29,.45,.46]);land.two(ee,aa,a,e,[.41,.57,.55]);
- land.two(a,e,c,b,[.55,.71,.66]);
- // Engraved golden diamond with a tiny glowing heart. Kept within the flat
- // collidable top, so the butterfly lands at the actual rock surface.
- const glyphY=topY+.009;
- const north=[x,glyphY,z-.15],east=[x+.15,glyphY,z];
- const south=[x,glyphY,z+.15],west=[x-.15,glyphY,z];
- const mid=[x,glyphY,z];
- land.tri(north,west,mid,[.95,.79,.37]);
- land.tri(west,south,mid,[.89,.70,.30]);
- land.tri(south,east,mid,[1,.86,.46]);
- land.tri(east,north,mid,[.96,.77,.32]);
- const colliders=[{v:[a,e,c],normal:[0,1,0]},{v:[a,c,b],normal:[0,1,0]}];
- rockSurfaces.push({x,z,radius:.46,triangles:colliders,emuWake:true});
- sceneryCounts.rocks++;
-}
-addEmuCubeRock();
 const GROUND_LEAF_COUNT=38;
 {
  let litterSeed=0x51eed;
@@ -689,6 +666,53 @@ function buildRaceArch(){
  }
 }
 buildRaceArch();
+// Stone gateway around a little *static 3-D model* of EMU. The visitor sees
+// the red six-servo torso, articulated silver legs and blue feet even when
+// the heavyweight neural model has never been downloaded.
+function buildRobotArch(){
+ const a=(side,up,forward=0)=>{
+  const x=EMU_ARCH_X+EMU_ARCH_RIGHT[0]*side*EMU_ARCH_SCALE+EMU_ARCH_FORWARD[0]*forward;
+  const z=EMU_ARCH_Z+EMU_ARCH_RIGHT[2]*side*EMU_ARCH_SCALE+EMU_ARCH_FORWARD[2]*forward;
+  return [x,height(x,z)+up*EMU_ARCH_SCALE,z];
+ };
+ const stone=[[.36,.51,.47],[.42,.54,.48],[.31,.46,.43],[.49,.56,.49]];
+ for(const side of [-1,1])for(let j=0;j<3;j++){
+  const lo=.02+j*.46,hi=.02+(j+1)*.46;
+  tube(land,[a(side*1.37,lo),a(side*1.37,hi)],
+   [.27*EMU_ARCH_SCALE,.27*EMU_ARCH_SCALE],stone[(j+(side+1))%stone.length],6);
+ }
+ for(let j=0;j<10;j++){
+  const p=Math.PI-j*Math.PI/10,q=Math.PI-(j+1)*Math.PI/10;
+  const arc=t=>a(1.37*Math.cos(t),1.40+1.16*Math.sin(t));
+  tube(land,[arc(p),arc((p+q)/2),arc(q)],
+   [.25*EMU_ARCH_SCALE,.25*EMU_ARCH_SCALE,.25*EMU_ARCH_SCALE],stone[(j+2)%stone.length],6);
+ }
+ const ground=height(EMU_ARCH_X,EMU_ARCH_Z),right=EMU_ARCH_RIGHT,forward=EMU_ARCH_FORWARD;
+ const place=(x,y,z)=>[EMU_ARCH_X+right[0]*x+forward[0]*z,
+  ground+y,EMU_ARCH_Z+right[2]*x+forward[2]*z];
+ // A low resting stool and a torso are assembled in the SAME actual WebGL
+ // world mesh; nothing spins up MuJoCo merely to draw the little sculpture.
+ tube(land,[place(0,.06,0),place(0,.33,0)],[.41,.40],[.41,.45,.43],12);
+ const torso=(x,y,z)=>place(x,y,z);
+ const v0=torso(-.21,.62,-.11),v1=torso(.21,.62,-.11),
+       v2=torso(.21,1.06,-.11),v3=torso(-.21,1.06,-.11),
+       v4=torso(-.21,.62,.13),v5=torso(.21,.62,.13),
+       v6=torso(.21,1.06,.13),v7=torso(-.21,1.06,.13);
+ land.two(v0,v1,v2,v3,[.70,.23,.25]);land.two(v4,v7,v6,v5,[.86,.38,.32]);
+ land.two(v0,v4,v5,v1,[.57,.19,.22]);land.two(v3,v2,v6,v7,[.93,.47,.33]);
+ land.two(v1,v5,v6,v2,[.60,.22,.24]);land.two(v0,v3,v7,v4,[.60,.22,.24]);
+ for(const side of [-1,1]){
+  const hip=place(side*.145,.67,.11),knee=place(side*.175,.35,.37),
+        shin=place(side*.19,.24,.49),foot=place(side*.19,.16,.62);
+  tube(land,[hip,knee],[.064,.046],[.71,.73,.74],8);
+  tube(land,[knee,shin],[.043,.034],[.66,.72,.77],8);
+  tube(land,[shin,foot],[.042,.063],[.26,.48,.82],8);
+  tube(land,[foot,place(side*.19,.16,.76)],[.064,.05],[.21,.39,.76],8);
+ }
+ // Tiny golden butterfly perch, like the live rider's torso ornament.
+ tube(land,[place(0,1.06,.02),place(0,1.20,.04)],[.024,.014],[.95,.79,.43],7);
+}
+buildRobotArch();
 land.seal();foliage.seal();blossoms.seal();fruit.seal();
 
 // ── Swing and shared landing surfaces ──
@@ -739,7 +763,6 @@ function vulnerablePerch(site){
  // The little marked EMU stone is an opt-in entrance, not lizard bait.
  // At half size it is otherwise low enough for the lizard to steal the
  // butterfly before a visitor can choose whether to download the robot.
- if(site.emuWake===true)return false;
  const p=perchPoint(site);
  if(Math.hypot(p[0],p[2])>14.8)return false;
  if(site.type==='ground'||site.type==='flower')return true;
@@ -801,7 +824,7 @@ function landingContact(previous,next,vertical,horizontal){
    if(Math.abs(next[0]-rock.x)>rock.radius||Math.abs(next[2]-rock.z)>rock.radius)continue;
    const top=rockHeightAt(rock,next[0],next[2]);
    if(top && top.y>height(next[0],next[2])+.015)
-    consider({type:'rock',pos:[next[0],top.y+.12,next[2]],normal:top.normal,emuWake:rock.emuWake===true},top.y+.12);
+    consider({type:'rock',pos:[next[0],top.y+.12,next[2]],normal:top.normal},top.y+.12);
   }
   if(horizontal<1.70)for(const f of flowers){
    if(Math.abs(next[0]-f.x)<.19&&Math.abs(next[2]-f.z)<.19&&Math.hypot(next[0]-f.x,next[2]-f.z)<.19)
