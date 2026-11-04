@@ -1,4 +1,4 @@
-import {wingForces,NPC_AERO,FLY} from './flight-physics.js';
+import {wingForces,NPC_AERO,FLY,RACE_FLY} from './flight-physics.js';
 import {RACE_TYPES,raceChoices,makeFigureEightCourse} from './race-course.js';
 (()=>{'use strict';
 const $=id=>document.getElementById(id), canvas=$('scene');
@@ -875,7 +875,7 @@ for(let i=0;i<54;i++){let b=newBug(i);bugs.push(b)}
 // the nose angle: gravity trades altitude for airspeed and lift curves the path.
 // Quantities are *specific* forces (N/kg = m/s²); tweak here for game feel.
 const flight={active:false,b:null,keys:Object.create(null),speed:1.9,gamma:-.06,
- flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,cameraZoom:1,gatePaused:false,gateCooldown:0,nectar:0,
+ flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,cameraZoom:1,gatePaused:false,gateCooldown:0,climbDemo:false,nectar:0,
  visit:new Set(),landed:false,perch:null,perchFlower:null,takeoffArmed:false,touchdown:0,caughtTimer:0,catches:0,flapCount:0,vs:0,aoa:0,drag:0,lift:0,
  mode:'GLIDING'};
 const joystick={x:0,y:0,pointer:null}; // Bank right +x, climb +y.
@@ -1276,7 +1276,7 @@ function beginFlight(){
  Object.assign(flight.b,{pos:[x,height(x,z)+2.45,z],heading:-2.62,pitch:.09,bank:0,energy:1,phase:0,hz:1/FLY.flapInterval,mode:'glide',state:'flying',col:[.99,.70,.23]});
  flight.keys=Object.create(null);flight.active=true;flight.speed=1.9;flight.gamma=-.06;
  flight.flapCooldown=0;flight.flapGlow=0;flight.stalled=false;flight.yawRate=0;
- flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;resetPilotCamera();flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;flight.gatePaused=false;flight.gateCooldown=0;$('emuGatePrompt').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
+ flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;resetPilotCamera();flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;flight.gatePaused=false;flight.gateCooldown=0;flight.climbDemo=false;$('emuGatePrompt').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
  raceReset();$('flyRace').textContent='';$('raceDirection').hidden=true;$('raceToast').hidden=true;
  flight.vs=0;flight.mode='GLIDING';$('flyHud').hidden=false;$('flyStart').hidden=true;$('emuStart').hidden=true;
  document.documentElement.classList.add('flight-active');
@@ -1334,7 +1334,10 @@ function stepFlight(dt){
   $('flyAlert').textContent='260M champion · MuJoCo 3.17 physical contacts · frames '+emu.pose.frames+' · falls '+emu.falls;
   return;
  }
- const b=flight.b,k=flight.keys,c=FLY;
+ const b=flight.b,k=flight.keys;
+ // Keep ordinary Meadow flying unchanged. During a race the same true
+ // lift/drag/energy physics gets a stronger wingbeat, NOT scripted altitude.
+ const c=race.mode==='running'||flight.climbDemo?RACE_FLY:FLY;
  // Integrate in small, bounded slices. Avoid frame-rate-dependent stall/wall impulses.
  const n=Math.ceil(dt/.018),h=dt/n;
  for(let j=0;j<n;j++){
@@ -2106,6 +2109,7 @@ if(new URLSearchParams(location.search).has('climb-demo')){
  b.pos=[-17,height(-17,-10)+2.8,-10];
  b.heading=0;b.pitch=.16;b.bank=0;b.energy=1;b.state='flying';
  flight.speed=3.0;flight.gamma=.10;flight.stalled=false;
+ flight.climbDemo=true;
 }
 // Deterministic browser-only entrance preview. It uses the SAME swept gate
 // detector as physical flight; no robot assets are loaded without clicking.
