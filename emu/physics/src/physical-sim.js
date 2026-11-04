@@ -11,7 +11,7 @@ import {SensorObserver,ArrayFlowObserver,TerrainActorObserver} from '../vendor/s
 import {sampleEpisodeCadence} from '../vendor/cadence.js';
 import {nextYawCommand} from '../vendor/controls.js';
 import {measuredAttitude} from '../vendor/attitude.js';
-import {withTerrain,surfaceSlope,surfaceLabGradient} from '../vendor/terrain.js';
+import {withMeadowTerrain,surfaceSlope} from './terrain.js';
 
 const TWO_PI=Math.PI*2;
 let mujocoModulePromise=null;
@@ -104,7 +104,7 @@ export class EmuBrowserSim {
     this.disposeModel();
     if(!this.meadowPark)throw new Error('Real Meadow collision heightfield required');
     this.park=this.meadowPark;
-    const xml=withTerrain(this.bundle.robot_xml,'park',{park:this.park});
+    const xml=withMeadowTerrain(this.bundle.robot_xml,this.park);
     this.model=this.mujoco.MjModel.from_xml_string(xml);
     if(!this.model)throw new Error('MuJoCo could not load robot XML');
     this.data=new this.mujoco.MjData(this.model);
@@ -403,14 +403,9 @@ export class EmuBrowserSim {
   isFallen() {
     const R = this.bodyRotation();
     const gravityZ = -this.worldToBody(R, 0, 0, -1)[2];
-    // On a downward/sideways diagnostic plane, absolute world-Z falls
-    // as the robot walks. Falling means body clearance ABOVE SUPPORT is
-    // too low; do not misclassify successful downhill walking as a fall.
-    const grade=this.terrainMode==='sensor' ?
-      surfaceLabGradient(this.sensorObstacle,this.surfaceSlopeDegrees) : null;
-    const root=this.data.qpos;
-    const supportZ=grade ? grade.gx*root[0]+grade.gy*root[1] : 0;
-    return this.heightM()-supportZ < 0.145 || gravityZ < 0.35;
+    // Preserve the original EMU viewer fall predicate for park terrain.
+    // The source diagnostic sensor-course special case is not used by Meadow.
+    return this.heightM() < 0.145 || gravityZ < 0.35;
   }
 
   heightM() { return Number(this.data.xpos[this.torsoId * 3 + 2]); }
@@ -429,9 +424,8 @@ export class EmuBrowserSim {
       cmd: { ...this.command }, requestedYaw: this.requestedYaw,
       headingHold: this.headingHold, headingActual: this.actualHeading(),
       headingTarget: this.headingTarget,
-      slope: surfaceSlope(this.terrainMode, this.park,
-        (feet[0][0]+feet[1][0])/2, (feet[0][1]+feet[1][1])/2, this.actualHeading(),
-        {obstacle:this.sensorObstacle,slopeDegrees:this.surfaceSlopeDegrees}),
+      slope: surfaceSlope(this.park,
+        (feet[0][0]+feet[1][0])/2, (feet[0][1]+feet[1][1])/2, this.actualHeading()),
       fallen: this.isFallen(), phaseRate: this.phaseRate(),
     };
   }
