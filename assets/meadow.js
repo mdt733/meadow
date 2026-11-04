@@ -2106,6 +2106,27 @@ if(new URLSearchParams(location.search).has('climb-demo')){
  flight.speed=3.0;flight.gamma=.10;flight.stalled=false;
  flight.climbDemo=true;
 }
+// Optional direct playtest of a race: run both REAL arch/choice sweep
+// checks and spawn shortly before the first checkpoint. Ordinary visitors
+// still choose the colour rings themselves; this adds no gameplay shortcut.
+const raceTrial=new URLSearchParams(location.search).get('race-demo');
+if(raceTrial!==null){
+ beginFlight();
+ const start=RACE_START,forward=RACE_ARCH_FORWARD;
+ raceCrossing(sub(start,mul(forward,2)),add(start,mul(forward,2)));
+ const selected=RACE_TYPES.findIndex(x=>x.name.toLowerCase()===raceTrial.toLowerCase());
+ const choice=race.choices[Math.max(0,selected)],f=choice?.normal;
+ if(choice&&f){
+  raceCrossing(sub(choice.pos,mul(f,2.5)),add(choice.pos,mul(f,2.5)));
+  const first=race.gates[0];
+  if(first){
+   const b=flight.b,h=first.normal;
+   b.pos=sub(first.pos,mul(h,3));b.heading=Math.atan2(h[0],h[2]);
+   b.pitch=.15;b.bank=0;b.energy=1;b.state='flying';
+   flight.speed=3.6;flight.gamma=Math.asin(clamp(h[1],-.4,.4));
+  }
+ }
+}
 // Flight-entry acceptance route: start a few metres before the arch, and
 // use the REAL flying integration to cross it, from either direction.
 // There is no synthetic enterEmuGate call and no eager neural download.
