@@ -1,10 +1,10 @@
 # EMU Butterfly Rider — actual neural policy + MuJoCo WASM physics
 
-**Walk the robot (12.0 MB download)** appears alongside **Fly a butterfly**
+**Walk the robot (~12 MB download)** appears alongside **Fly a butterfly**
 in ordinary Meadow. The **butterfly-only experience downloads no robot physics,
 neural network, or WebAssembly files**. The special teal-and-gold rock near
 x=7,z=9.1 is now half its original size. Land there to see a separately
-labelled **Wake EMU (12.0 MB download)** option; landing alone does not download
+labelled **Wake EMU (~12 MB download)** option; landing alone does not download
 anything. `?emu-demo=1` starts already perched on that rock.
 
 Clicking either Walk or Wake shows a byte-accurate progress bar with an MB count
@@ -24,8 +24,8 @@ A second ride in the same tab reuses the loaded engine without another download.
   *robot.xml*, actuated servos, passive shin springs, foot contacts and
   gravity. Per-frame network actions are **actually passed to MuJoCo**.
 - **Google DeepMind `@mujoco/mujoco@3.17.0` compiled into WASM**. The
-  robot-specific first-ride download is **12.0 MB total**: 0.89 MB neural
-  actor, 0.148 MB JavaScript runtime, and 10.93 MB WASM. No heavy robot assets
+  robot-specific first-ride download is **~12 MB total**: 0.89 MB neural
+  actor, a much smaller headless JavaScript runtime (~0.13 MB), and 10.93 MB WASM. No heavy robot assets
   are fetched for ordinary Meadow visitors or butterfly-only flight.
 - Real physics terrain: a **257×257 collision heightfield**, covering 31m
   edge-to-edge, sampled from Meadow's existing procedural `height(x,z)`.
