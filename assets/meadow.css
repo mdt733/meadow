@@ -20,7 +20,6 @@ html.embedded #pilotEntrances,html.flight-active #pilotEntrances{display:none!im
 .fly-metrics{display:flex;gap:16px;flex-wrap:wrap;font-variant-numeric:tabular-nums}.fly-metrics b{font-size:15px}
 .fly-mode{color:#e5f8cc;letter-spacing:.08em;font-size:11px}.fly-mode[data-mode="PERCHED"]{color:#e6d6a9}
 .fly-instructions{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;padding:9px 15px;border-radius:18px;background:#1b3e3c94;border:1px solid #ffffff30}
-.fly-action{pointer-events:auto;position:absolute;right:max(16px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));font:700 13px system-ui;background:#e9f7dcde;color:#315744;border:1px solid white;border-radius:20px;padding:11px 16px;cursor:pointer}
 .fly-alert{margin-top:7px;color:#f9dda0;font-size:12px;font-weight:600;min-height:16px}.fly-alert:empty{display:none}
 .fly-stamina{display:inline-block;vertical-align:middle;background:#ffffff4c;border:1px solid #ffffff79;border-radius:9px;width:72px;height:8px;overflow:hidden}.fly-stamina span{display:block;height:100%;background:#d4ed96;width:100%}
 .fly-touch{display:none;position:absolute;inset:auto 0 max(18px,env(safe-area-inset-bottom));padding:0 max(12px,env(safe-area-inset-left)) 0 max(12px,env(safe-area-inset-right));justify-content:space-between;align-items:end;gap:12px}
