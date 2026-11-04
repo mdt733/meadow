@@ -21,7 +21,7 @@ test('genuine pinned 260M champion 360→256→256→6 actor evaluates finite mo
 test('on-demand runtime is official MuJoCo and never the old garden walking proxy',()=>{
  const loader=read('../emu/emu.js');
  const physics=read('../emu/physics/src/index.js');
- const upstream=read('../emu/physics/vendor/sim.js');
+ const upstream=read('../emu/physics/src/physical-sim.js');
  const packageJson=JSON.parse(read('../emu/physics/package.json'));
  assert.equal(packageJson.dependencies['@mujoco/mujoco'],'3.17.0');
  assert.match(loader,/import\('\.\/physics\/dist\/emu-physics\.js'\)/);
@@ -60,28 +60,33 @@ test('the robot spawns in a broad outer-meadow clearing with a camera independen
  assert.match(html,/Math\.exp\(-3\.2\*dt\)/);
  assert.match(html,/emuCameraRig=null/);
 });
-test('all 12.5 MB of robot assets are explicit, accounted for and opt-in',()=>{
+test('all 12.0 MB of robot assets are explicit, accounted for and opt-in',()=>{
  const html=read('../meadow.html'),loader=read('../emu/emu.js');
- const upstream=read('../emu/physics/vendor/sim.js');
+ const upstream=read('../emu/physics/src/physical-sim.js');
  const adapter=read('../emu/physics/src/index.js');
  assert.equal(ROBOT_ASSETS.length,3);
  const byName=Object.fromEntries(ROBOT_ASSETS.map(a=>[a.name,a]));
  assert.equal(ROBOT_DOWNLOAD_BYTES,ROBOT_ASSETS.reduce((sum,a)=>sum+a.bytes,0));
- assert.ok(ROBOT_DOWNLOAD_BYTES>12e6 && ROBOT_DOWNLOAD_BYTES<13e6);
+ assert.ok(ROBOT_DOWNLOAD_BYTES>11.9e6 && ROBOT_DOWNLOAD_BYTES<12.1e6);
  for(const asset of ROBOT_ASSETS){
   assert.equal(statSync(new URL('../emu/'+asset.path.replace(/^\.\//,''),import.meta.url)).size,
                asset.bytes,asset.name+' manifest must match the real file size');
  }
- assert.match(html,/Walk the robot <span class="emu-download-note">\(12\.5 MB download\)<\/span>/);
+ assert.match(html,/Walk the robot <span class="emu-download-note">\(12\.0 MB download\)<\/span>/);
  assert.match(html,/id="emuDownloadDetail"/);
  assert.match(html,/id="emuProgress"/);
- assert.match(html,/Wake EMU \(12\.5 MB download\)/);
+ assert.match(html,/Wake EMU \(12\.0 MB download\)/);
  assert.match(loader,/response\.body\?\.getReader/);
  assert.match(loader,/report\(value\.byteLength,asset\.stage\)/);
  assert.match(loader,/wasmBinary=await downloadBytes/);
- assert.match(upstream,/wasmBinary = null/);
+ assert.match(upstream,/wasmBinary=null/);
+ assert.ok(upstream.includes("from '../../policy.js'"),"headless core must reuse the public policy module");
+ assert.ok(!upstream.includes("THREE") && !upstream.includes("document.createElement") &&
+            !upstream.includes("OrbitControls"),"headless physics must not own WebGL rendering");
+ assert.ok(!adapter.includes("document.createElement"),"Meadow must be the only WebGL owner");
+ assert.ok(adapter.includes("from './physical-sim.js'"));
  assert.match(upstream,/loadMujoco\(\{/);
- assert.match(adapter,/EmuBrowserSim\.create\(canvas,bundle,wasmBinary\)/);
+ assert.match(adapter,/EmuBrowserSim\.create\(bundle,wasmBinary\)/);
 });
 test('special rock top, diamond, sides and collision radius are all half-sized',()=>{
  const html=read('../meadow.html');
