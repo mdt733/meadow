@@ -2098,6 +2098,15 @@ setPaused(paused);resize();requestAnimationFrame(tick);
 if(new URLSearchParams(location.search).has('pilot'))beginFlight();
 window.__meadowFlight={start:beginFlight,stop:endFlight,state:()=>({active:flight.active,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},gatePaused:flight.gatePaused,tilt:{enabled:tilt.enabled,ready:tilt.ready,bank:tilt.bank,pitch:tilt.pitch,angle:tilt.angle},joystick:{x:joystick.x,y:joystick.y},fullscreen:!!document.fullscreenElement,pos:flight.b?.pos.slice(),speed:flight.speed,gamma:flight.gamma,verticalSpeed:flight.vs,mode:flight.mode,stalled:flight.stalled,aoa:flight.aoa,lift:flight.lift,drag:flight.drag,heading:flight.b?.heading,nectar:flight.nectar,flaps:flight.flapCount,energy:flight.b?.energy,landed:flight.landed,perchedOnFlower:!!flight.perchFlower,perch:flight.perch?.type||null,safe:flight.landed&&!vulnerablePerch(flight.perch),catches:flight.catches,availableNectar:flowers.filter((f,i)=>f.nectar&&!flight.visit.has(i)).length,race:{mode:race.mode,course:race.course,index:race.index,total:race.gates.length,elapsed:race.elapsed,penalty:race.penalty,scoredTime:race.elapsed+race.penalty,sinceGate:race.sinceGate,boostTime:race.boostTime,best:race.best,next:race.mode==='running'?race.gates[race.index]?.pos:race.mode==='idle'?RACE_START:null,choices:race.choices.map(g=>({name:g.name,pos:g.pos})),courseGates:race.gates.map(g=>({pos:[...g.pos],normal:[...g.normal],radius:g.radius}))}})};
 window.__meadowStep=(seconds)=>{let count=Math.ceil(seconds/.05);for(let i=0;i<count;i++){time+=.05;evolve(.05,time);stepSwing(.05,time);stepEmu(.05);stepFlight(.05);stepPollen(.05);stepAirLife(.05)}draw()};
+// A bounded physical climb trial in a clear part of the meadow. The browser
+// still drives the actual same lift/drag/energy integration as normal flight.
+if(new URLSearchParams(location.search).has('climb-demo')){
+ beginFlight();
+ const b=flight.b;
+ b.pos=[-17,height(-17,-10)+2.8,-10];
+ b.heading=0;b.pitch=.16;b.bank=0;b.energy=1;b.state='flying';
+ flight.speed=3.0;flight.gamma=.10;flight.stalled=false;
+}
 // Deterministic browser-only entrance preview. It uses the SAME swept gate
 // detector as physical flight; no robot assets are loaded without clicking.
 if(new URLSearchParams(location.search).has('emu-arch-demo')||
