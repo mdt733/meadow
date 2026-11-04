@@ -54,8 +54,12 @@ an official EMU physical evaluation result.
 
 ## Rider controls and camera
 
-- W/S: forward/back; A/D and horizontal mobile joystick: physically correct
-  left/right yaw, matched to EMU's official viewer (-yaw for right).
+- W/S: forward/back. Full W now requests **+0.56 m/s** (formerly
+  +0.27 m/s), within the pinned champion's **+0.669 m/s** command limit;
+  reverse is capped at -0.34 m/s. Requested speed is a goal for the real
+  neural walker, not a forced animation or guaranteed actual speed.
+- A/D and horizontal mobile joystick: right and left rider turn commands
+  are corrected for this Meadow camera/control convention.
 - The MuJoCo-to-Meadow conversion correctly mirrors the **lateral axis**
   (MuJoCo +Y means **left**); the robot, camera, terrain hfield and autonomous
   heading calculations all use the same convention.
