@@ -139,6 +139,9 @@ try{
  // climb under repeated flaps in the untouched open-meadow physics model.
  await page.goto('http://127.0.0.1:8765/meadow.html?climb-demo=1',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ // Disable RAF stepping: manual __meadowStep must be the ONLY integrator,
+ // otherwise software WebGL frame timing contaminates the climb measurement.
+ await page.evaluate(()=>document.getElementById('pause').click());
  const climbStart=await page.evaluate(()=>window.__meadowFlight.state());
  await page.keyboard.down('s');
  await page.keyboard.down('Space');
@@ -160,14 +163,15 @@ try{
  // able to use smaller pitch corrections to ascend *with* forward airspeed.
  await page.goto('http://127.0.0.1:8765/meadow.html?climb-demo=1',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>document.getElementById('pause').click());
  await page.keyboard.down('Space');
  const cruise=await page.evaluate(()=>{
   const start=window.__meadowFlight.state();
   for(let i=0;i<20;i++){
    window.dispatchEvent(new KeyboardEvent('keydown',{key:'s',code:'KeyS',bubbles:true}));
-   window.__meadowStep(.17);
+   window.__meadowStep(.05);
    window.dispatchEvent(new KeyboardEvent('keyup',{key:'s',code:'KeyS',bubbles:true}));
-   window.__meadowStep(.33);
+   window.__meadowStep(.45);
   }
   const end=window.__meadowFlight.state();
   return {gainM:end.pos[1]-start.pos[1],speedMps:end.speed,energy:end.energy,
