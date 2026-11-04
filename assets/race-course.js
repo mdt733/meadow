@@ -99,9 +99,9 @@ export function makeFigureEightCourse({index,choice,start,direction,height,finis
   {milestone:'low',pos:at(0),normal:tangent(at,0)},
   {milestone:'high',pos:at(Math.PI),normal:tangent(at,Math.PI)}
  ].map(m=>({...m,d:nearestDistance(m.pos)}));
- const samples=Array.from({length:count-1},(_,k)=>total*(k+1)/count)
+ const ringDistances=Array.from({length:count-1},(_,k)=>total*(k+1)/count)
   .filter(d=>mandatory.every(m=>Math.abs(d-m.d)>kind.step*.42));
- const scheduled=[...samples,...mandatory.map(m=>m.d),total].sort((a,b)=>a-b);
+ const scheduled=[...ringDistances,...mandatory.map(m=>m.d),total].sort((a,b)=>a-b);
  const gates=[];let cursor=1;
  for(let k=0;k<scheduled.length;k++){
   const d=scheduled[k],last=k===scheduled.length-1;
