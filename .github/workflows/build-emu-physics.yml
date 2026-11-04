@@ -36,7 +36,7 @@ jobs:
           const path='../emu.js';
           const original=readFileSync(path,'utf8');
           const size=statSync('dist/emu-physics.js').size;
-          const pattern=/(name:'runtime',path:'\\.\\/physics\\/dist\\/emu-physics\\.js',bytes:)\\d+/;
+          const pattern=/(name:'runtime',.*?bytes:)[0-9]+/;
           if(!pattern.test(original))throw new Error('Runtime manifest entry missing');
           const updated=original.replace(pattern,(_,prefix)=>prefix+size);
           if(updated!==original)writeFileSync(path,updated);
