@@ -35,11 +35,12 @@ export function raceFigurePoint(index,u,height){
 export function raceChoices(start,direction,height){
  const f=norm([direction[0],0,direction[2]]);
  const right=norm([-f[2],0,f[0]]);
+ const inward=norm([-start[0],0,-start[2]]);
  return RACE_TYPES.map((type,i)=>{
-  // Farther downrange and lower than the old 9m/3m markers. ~16.5m
-  // of approach gives the visitor room to read and deliberately steer.
-  const x=start[0]+f[0]*16.5+right[0]*(i-1)*5.3;
-  const z=start[2]+f[2]*16.5+right[2]*(i-1)*5.3;
+  // 16.5m downrange (old: 9.2m), with a gentle 4.5m inward bend so even
+  // the outer colour stays within the richly detailed 31m meadow.
+  const x=start[0]+f[0]*16.5+right[0]*(i-1)*5.3+inward[0]*4.5;
+  const z=start[2]+f[2]*16.5+right[2]*(i-1)*5.3+inward[2]*4.5;
   return {name:type.name,color:type.color,radius:1.70,
    pos:[x,Math.max(height(x,z)+1.85,start[1]+.10),z],normal:f};
  });
