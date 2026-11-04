@@ -8,9 +8,9 @@ import loadMujoco from '@mujoco/mujoco';
 import mujocoWasmUrl from '@mujoco/mujoco/mujoco.wasm?url';
 import {PolicyRunner} from '../../policy.js';
 import {ArrayFlowObserver,TerrainActorObserver} from './sensors.js';
-import {sampleEpisodeCadence} from '../vendor/cadence.js';
-import {nextYawCommand} from '../vendor/controls.js';
-import {measuredAttitude} from '../vendor/attitude.js';
+
+
+import {sampleEpisodeCadence,nextYawCommand,measuredAttitude} from './dynamics.js';
 import {withMeadowTerrain,surfaceSlope} from './terrain.js';
 
 const TWO_PI=Math.PI*2;
