@@ -3,12 +3,12 @@
 // Every robot-only binary is tracked by real network bytes, not timed guesses.
 import {parsePolicy} from './policy.js';
 
-// Exact committed (uncompressed) asset sizes, verified against the GitHub
-// feature-branch files. If rebuilding the bundle changes a filename or size,
-// update this manifest and the public Walk button's download estimate together.
+// Exact committed (uncompressed) asset sizes. The physics build workflow
+// updates the runtime JS byte count automatically after recompilation.
+// This keeps genuine streamed-byte progress correct without guessing.
 export const ROBOT_ASSETS=Object.freeze([
  {name:'champion',path:'./champion.emupolicy',bytes:886002,stage:'Downloading the champion neural network…'},
- {name:'runtime',path:'./physics/dist/emu-physics.js',bytes:714098,stage:'Downloading the MuJoCo runtime…'},
+ {name:'runtime',path:'./physics/dist/emu-physics.js',bytes:134240,stage:'Downloading the MuJoCo runtime…'},
  {name:'wasm',path:'./physics/dist/assets/mujoco-CGsuVDfV.wasm',bytes:10927842,stage:'Downloading the MuJoCo physics engine…'},
 ]);
 export const ROBOT_DOWNLOAD_BYTES=ROBOT_ASSETS.reduce((sum,a)=>sum+a.bytes,0);

@@ -1,7 +1,7 @@
 // Real physics adapter for Meadow's butterfly rider.
 // MuJoCo 3.17 WASM and the same browser simulator / sensor code used by EMU.
 // NO scripted gait, kinematic root movement, or navigation position assist.
-import { EmuBrowserSim } from '../vendor/sim.js';
+import { EmuPhysicsCore } from './physical-sim.js';
 
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -48,12 +48,10 @@ export function sampleMeadowPark(heightAt,origin){
 
 export class PhysicalMeadowEmu {
  static async create(bundle,heightAt,start={x:8,z:9.1},wasmBinary=null){
-  // The secondary WebGL canvas is never inserted into the page or rendered.
-  // It exists to reuse EMU's physically validated viewer engine and its exact
-  // sensor / actuation paths, not to draw another meadow over Meadow's scene.
-  const canvas=document.createElement('canvas');
-  canvas.width=2;canvas.height=2;
-  const sim=await EmuBrowserSim.create(canvas,bundle,wasmBinary);
+  // Single-renderer architecture: this headless core constructs MuJoCo
+  // and the original observation/policy/actuator contracts WITHOUT creating
+  // any second WebGL canvas, Three.js scene or viewer renderer.
+  const sim=await EmuPhysicsCore.create(bundle,wasmBinary);
   const origin={x:start.x,z:start.z,height:heightAt(start.x,start.z)};
   sim.meadowPark=sampleMeadowPark(heightAt,origin);
   sim.terrainMode='park';
