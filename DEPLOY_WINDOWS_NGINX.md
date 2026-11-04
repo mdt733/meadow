@@ -24,7 +24,7 @@ C:\nginx\html\
     emu.js                                 On-demand loader
     policy.js                              Neural inference
     physics\dist\
-      emu-physics.js                      714,098 bytes; pre-built JS
+      emu-physics.js                      prebuilt JS (size synced automatically)
       assets\mujoco-CGsuVDfV.wasm        10,927,842 bytes; pre-built WASM
   hangar\                                 Existing other apps; leave intact
 ```
@@ -85,9 +85,15 @@ foreach ($rel in $files) {
 
 $expected = @{
   'emu/champion.emupolicy' = 886002
-  'emu/physics/dist/emu-physics.js' = 714098
+
   'emu/physics/dist/assets/mujoco-CGsuVDfV.wasm' = 10927842
 }
+# The build workflow updates this size automatically when source changes.
+$loader = Get-Content -Raw (Join-Path $stage 'emu/emu.js')
+$runtimeMatch = [regex]::Match($loader, "name:'runtime',path:'[^']+',bytes:(\d+)")
+if (-not $runtimeMatch.Success) { throw 'Runtime byte manifest missing from emu.js' }
+$expected['emu/physics/dist/emu-physics.js'] = [int]$runtimeMatch.Groups[1].Value
+
 foreach ($rel in $expected.Keys) {
   $actual = (Get-Item -LiteralPath (Join-Path $stage $rel)).Length
   if ($actual -ne $expected[$rel]) {
@@ -128,7 +134,7 @@ so the exact MIME type is not required for streaming compilation.
 - The release should update the public top-level README. Do **not** publish
   private PHP homepage files from the public Meadow repo.
 - Smoke-test live `meadow.html`, then click **Walk the robot** and verify the
-  12.5 MB progress bar and walking. Verify existing homepage and `/hangar/`
+  ~12 MB progress bar and walking. Verify existing homepage and `/hangar/`
   links still work. A hard browser refresh may be necessary after deployment.
 
 The feature-only build workflow intentionally must not start pushing generated

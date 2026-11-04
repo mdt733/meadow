@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {"build": "vite build"},
   "dependencies": {
-    "@mujoco/mujoco": "3.17.0",
-    "three": "0.180.0"
+    "@mujoco/mujoco": "3.17.0"
   },
   "devDependencies": {"vite": "7.1.0"}
 }
