@@ -58,11 +58,14 @@ an official EMU physical evaluation result.
   +0.27 m/s), within the pinned champion's **+0.669 m/s** command limit;
   reverse is capped at -0.34 m/s. Requested speed is a goal for the real
   neural walker, not a forced animation or guaranteed actual speed.
-- A/D and horizontal mobile joystick: right and left rider turn commands
-  are corrected for this Meadow camera/control convention.
-- The MuJoCo-to-Meadow conversion correctly mirrors the **lateral axis**
-  (MuJoCo +Y means **left**); the robot, camera, terrain hfield and autonomous
-  heading calculations all use the same convention.
+- A/D and horizontal mobile joystick: positive rider turn command for D,
+  negative for A. Meadow's right-handed chase camera looks down world +Z;
+  **world -X projects to screen-right**. This is why matching a numeric yaw
+  sign to the original EMU viewer was not a valid steering test.
+- The MuJoCo-to-Meadow transform mirrors the physical lateral axis
+  (MuJoCo +Y is left). The camera has its own screen-space handedness; the
+  browser test now checks projected screen-right and actual body rotation,
+  rather than the yaw command alone.
 - Third-person camera orientation and target follow independent,
   frame-rate-aware exponential smoothing; its vertical target is taken from
   **ground plus 21cm**, not the moving torso or butterfly. This deliberately
