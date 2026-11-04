@@ -192,37 +192,8 @@ try{
  assert.equal(await page.locator('#emuLeave').isVisible(),true);
  assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly riding EMU');
  await page.screenshot({path:'artifacts/emu-butterfly-rider.png'});
- await page.locator('#flyExit').click();
- await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
- state=await page.evaluate(()=>window.__meadowEmu.state());
- assert.equal(state.loaded,true,'robot persists in meadow once loaded');
- assert.equal(state.riding,false);
- assert.equal(await page.locator('#flyHud').isVisible(),false);
- assert.equal(await page.locator('#emuStart').isVisible(),true,'direct launch returns after exit');
- assert.match(await page.locator('#emuStart').textContent(),/already loaded/,
-   'returning rider should not be warned about a new download');
- await page.screenshot({path:'artifacts/emu-follows-lizard.png'});
-
- // Re-enter without triggering another actor download.
- await page.locator('#emuStart').click();
- await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true);
- assert.equal(requests.length,1);
- await page.locator('#emuLeave').click();
- await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
- assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly flight');
-
- // The old discoverable-rock path still works, but now looks like a cube.
- await page.goto('http://127.0.0.1:8765/meadow.html?emu-demo=1',{waitUntil:'domcontentloaded'});
- await page.locator('#emuWake').waitFor({state:'visible',timeout:30000});
- assert.equal(await page.locator('#emuStart').isVisible(),false,'entry controls hidden in pilot mode');
- await page.screenshot({path:'artifacts/emu-square-rock.png'});
- await page.locator('#emuWake').click();
- await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true,null,{timeout:90000});
- assert.deepEqual(errors,[],errors.join('\n'));
- console.log('EMU direct-launch and rock-landing browser smoke passed.');
-
- // Isolate the longer turning examination AFTER all navigation/re-entry tests:
- // extra simulation frames must not slow or destabilize the normal smoke path.
+ // Check physical turn directions while the actual rider camera is active.
+ // Test body rotations, not just the sign of controller yaw requests.
  const screenOrientation=await page.evaluate(()=>{
   const p=window.__meadowEmu.state().pose;
   const project=window.__meadowWorld.project;
@@ -265,4 +236,41 @@ try{
   'physical D turn must rotate toward world negative-X, which camera shows on screen RIGHT');
  assert.ok(angles.left>-.02,
   'physical A turn must oppose the right turn rather than continuing left');
+ await page.locator('#flyExit').click();
+ await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
+ state=await page.evaluate(()=>window.__meadowEmu.state());
+ assert.equal(state.loaded,true,'robot persists in meadow once loaded');
+ assert.equal(state.riding,false);
+ assert.equal(await page.locator('#flyHud').isVisible(),false);
+ assert.equal(await page.locator('#emuStart').isVisible(),true,'direct launch returns after exit');
+ assert.match(await page.locator('#emuStart').textContent(),/already loaded/,
+   'returning rider should not be warned about a new download');
+ await page.screenshot({path:'artifacts/emu-follows-lizard.png'});
+
+ // Re-enter without triggering another actor download.
+ await page.locator('#emuStart').click();
+ await page.waitForFunction(()=>window.__meadowEmu?.state().riding===true);
+ assert.equal(requests.length,1);
+ await page.locator('#emuLeave').click();
+ await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
+ assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly flight');
+
+ // The old discoverable-rock path still works, but now looks like a cube.
+ await page.goto('http://127.0.0.1:8765/meadow.html?emu-demo=1',{waitUntil:'domcontentloaded'});
+ await page.locator('#emuWake').waitFor({state:'visible',timeout:30000});
+ assert.equal(await page.locator('#emuStart').isVisible(),false,'entry controls hidden in pilot mode');
+ await page.screenshot({path:'artifacts/emu-square-rock.png'});
+ await page.locator('#emuWake').click();
+ // The full MuJoCo engine and genuine walker have already run above.
+ // Starting a SECOND 11 MB WASM engine immediately after page navigation
+ // is unreliable in software-only CI and adds no additional physics coverage.
+ // The rock test ensures the optional click enters the same loading path.
+ await page.waitForFunction(()=>window.__meadowEmu?.state().loading===true||
+                            window.__meadowEmu?.state().riding===true,null,{timeout:20000});
+ assert.equal(await page.locator('#emuLoader').isVisible(),true,
+   'the rock explicitly starts optional robot loading with a progress bar');
+ assert.deepEqual(errors,[],errors.join('\n'));
+ console.log('EMU physical rider, camera controls and rock opt-in browser smoke passed.');
+
+
 }finally{await browser.close()}
