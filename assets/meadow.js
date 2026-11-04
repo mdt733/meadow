@@ -1,3 +1,4 @@
+import {wingForces,NPC_AERO,FLY} from './flight-physics.js';
 (()=>{'use strict';
 const $=id=>document.getElementById(id), canvas=$('scene');
 let emu=null,emuRiding=false,emuLoading=false;
@@ -834,23 +835,8 @@ function perspective(fovy,aspect,near,far){const f=1/Math.tan(fovy/2),nf=1/(near
 function viewMatrix(eye,target){let f=norm(sub(target,eye)),r=norm(cross(f,[0,1,0])),u=cross(r,f);return {m:new Float32Array([r[0],u[0],-f[0],0,r[1],u[1],-f[1],0,r[2],u[2],-f[2],0,-dot(r,eye),-dot(u,eye),dot(f,eye),1]),r,u,f}}
 function mm(a,b){let o=new Float32Array(16);for(let col=0;col<4;col++)for(let row=0;row<4;row++)for(let k=0;k<4;k++)o[col*4+row]+=a[k*4+row]*b[col*4+k];return o}
 const config={count:28,wind:.6,flock:.35};const bugs=[];
-// A single aerodynamic kernel, tuned with two profiles. Different brains choose
-// where and when to fly; both butterflies obey lift, drag, banking and wingbeats.
-// We deliberately retain the nimble NPC scale rather than making every bug a
-// full-sized player aircraft (and preserve the human's tested stall behaviour).
-function wingForces(speed,aoa,bank,flapping,phase,p){
- const excess=Math.max(0,aoa-(p.stallStart??100));
- const attached=Math.max(p.minAttach??1,1-excess*excess*(p.stallLoss??0));
- const cl=clamp(p.liftBase+p.liftAoA*clamp(aoa,p.shapeMin??-10,p.shapeMax??10),p.minCl,p.maxCl)*attached;
- const lift=Math.min(p.maxLift??1000,cl*Math.min(p.liftSpeedLimit??1000,p.liftV2*speed*speed))+
-  (flapping?p.flapLift*(p.flapBase+p.flapPulse*(p.positiveFlap?Math.max(0,Math.sin(phase)):Math.sin(phase+(p.flapPhase||0)))):0);
- const drag=p.drag0+p.dragV2*speed*speed+(p.induced||0)*Math.max(0,cl*cl)+
-  (p.bankDrag||0)*Math.abs(bank)*(p.bankSpeed?speed:1)+(p.stallDrag||0)*excess*excess;
- return {lift,drag,cl,excess};
-}
-const NPC_AERO={liftBase:.66,liftAoA:.85,shapeMin:-.22,shapeMax:.48,minCl:0,maxCl:3,
- liftV2:1/1.47,liftSpeedLimit:1.55,flapLift:1,flapBase:.88,flapPulse:.12,flapPhase:PI/2,
- drag0:.105,dragV2:.16,bankDrag:.12};
+// Both player and NPC butterflies use the shared, independently tested
+// lift/drag kernel; behaviour here chooses their movement and goals.
 const canopyPerches=perchSites.filter(p=>(p.type==='leaf'||p.type==='branch')&&p.pos[1]>base+3.4);
 function angleDelta(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b))}
 function newBug(i){
@@ -864,15 +850,6 @@ for(let i=0;i<54;i++){let b=newBug(i);bugs.push(b)}
 // body pitch and flight-path angle. We do NOT assign a vertical velocity from
 // the nose angle: gravity trades altitude for airspeed and lift curves the path.
 // Quantities are *specific* forces (N/kg = m/s²); tweak here for game feel.
-const FLY={g:9.81, drag0:.055,dragV2:.065,induced:.032, liftV2:2.30,
- liftBase:.63,liftAoA:1.65,maxLift:29,flapImpulse:.64,flapLift:3.4,
- flapInterval:.245, flapCost:.019,regen:.080,
- // Gradually lower the nose when speed falls, even if the pilot keeps pulling up.
- noseDipStart:1.90,noseDipFull:.70,noseDipRate:1.05,lowSpeedStick: .78,
- stallIn:.34,stallOut:.88,maxSpeed:14,
- // Shared wing-force coefficients: these preserve the original player model.
- stallStart:.70,stallLoss:1.15,minAttach:.62,minCl:.06,maxCl:1.75,
- flapBase:.70,flapPulse:.30,positiveFlap:true,bankDrag:.055,bankSpeed:true,stallDrag:.55};
 const flight={active:false,b:null,keys:Object.create(null),speed:1.9,gamma:-.06,
  flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,cameraZoom:1,nectar:0,
  visit:new Set(),landed:false,perch:null,perchFlower:null,takeoffArmed:false,touchdown:0,caughtTimer:0,catches:0,flapCount:0,vs:0,aoa:0,drag:0,lift:0,
@@ -2140,4 +2117,7 @@ if(new URLSearchParams(location.search).has('emu-demo')){
 window.__meadowEmu={start:startRobotRide,state:()=>({loaded:!!emu,riding:emuRiding,loading:emuLoading,
   pose:emu?.pose||null,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},commandYaw:emu?.sim?.commandTarget?.yaw??null,commandVx:emu?.sim?.commandTarget?.vx??null,headingTarget:emu?.sim?.headingTarget??null,rock:{...EMU_ROCK},clearing:{...EMU_CLEARING},cameraRig:emuCameraRig?{x:emuCameraRig.x,y:emuCameraRig.y,z:emuCameraRig.z,heading:emuCameraRig.h}:null}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
 window.__meadowDiagnostics=()=>({cameraSettings:{...cameraSettings},render:'webgl',lizardConfig:{...lizardConfig},lizardStrokeCount:lizardLines.length,landscape:{...landscape},lighting:{...lighting},groundTriangles:Math.round(land.count/3),leaves:Math.round(foliage.count/6),apples:Math.round(fruit.count/270),swingAngle:swingState.angle,swingLength:ropeLength,skybox:skySource!=='procedural',skyboxSource:skySource,skyboxStatus:skyStatus,skyLoadAttempts:[...skyLoadAttempts],skyboxURL:SKYBOX_URL,skyboxTextureComplete:gl.isTexture(skyTex),fairyDoor:true,doorScale:.27,scenery:{...sceneryCounts},nectarFlowers:flowers.filter(f=>f.nectar).length,perchSites:perchSites.length,rockCollisionSurfaces:rockSurfaces.length,visiblePollen:pollen.length,ambientMotes:ambientMotes.length,fallingLeaves:fallingLeaves.length,groundLeaves:GROUND_LEAF_COUNT,leafSources:leafSources.length,flightCatches:flight.catches,camera:{turn,elev,radius},butterflies:bugs.slice(0,config.count).map(b=>({x:b.pos[0],y:b.pos[1],z:b.pos[2],state:b.state,intent:b.intent,tourStops:b.tourStops,target:[...b.target],mode:b.mode,vel:b.vel,pitch:b.pitch,bank:b.bank,aoa:b.aoa,speed:b.speed,energy:b.energy,wingPhase:b.phase,altitude:b.pos[1]-height(b.pos[0],b.pos[2])}))});
+// Import after the scene publishes its world bridge, so lizard IK never
+// starts against a missing renderer (module evaluation order is explicit).
+import('../ground-lizard.js').catch(error=>console.error('Lizard failed to load',error));
 })();
