@@ -11,9 +11,9 @@ A small, living WebGL landscape: rolling grassland, a procedural apple tree and 
 - Background butterflies exploring flowers and canopy perches.
 - Ground lizard with articulated movement and hunting behaviour.
 - Playable butterfly flight with flapping, gliding, nectar, landing and perching.
-- Hidden stone arch leading to three aerial race circuits with boosts, time penalties and local best-times.
+- The original stone race arch leads to three **lower, farther-apart difficulty rings** and a large continuous 3-D **figure-eight**: one low crossing beside the apple tree, then another higher than its crown. Colour routes add climbing and turning variation, with boosts, penalties and local bests.
 - Mobile controls including a thumbstick, optional phone tilt steering and fullscreen support where the browser allows it.
-- **Optional EMU robot ride:** the pinned 260M-step trained neural actor runs six physical actuators through real MuJoCo WASM, on a Meadow-derived collision heightfield. The **Walk the robot (~12 MB download)** button shows byte-accurate progress; butterfly-only visitors download none of these robot extras.
+- **Optional EMU robot ride:** a second arch ~90° around the tree contains a small red-and-blue 3-D EMU sculpture. Fly through (no awkward rock landing) to pause and choose **Walk the robot** or **Keep flying**. The pinned 260M-step trained actor then drives six real MuJoCo servos on the Meadow heightfield. The optional ~12 MB model and physics downloads start **only** after choosing Walk; the homepage's direct Walk button still works.
 - Third-person **mouse/touch drag orbit** and **wheel/pinch zoom** for both flying butterfly and walking EMU. Release eases back into follow mode; the chosen zoom persists.
 
 ## Files
@@ -24,7 +24,8 @@ A small, living WebGL landscape: rolling grassland, a procedural apple tree and 
 | `meadow.html` | Thin HTML shell for the standalone/embedded homepage and pilot HUD. |
 | `assets/meadow.css` | Responsive presentation and HUD styling. |
 | `assets/meadow.js` | WebGL world and renderer, procedural scenery, butterfly/race gameplay, camera and input. |
-| `assets/flight-physics.js` | Pure, independently tested shared player/NPC lift and drag model. |
+| `assets/flight-physics.js` | Pure shared player/NPC lift and drag; a race-only stronger wingbeat profile powers physically attainable high routes without changing relaxed flight. |
+| `assets/race-course.js` | Deterministic 3-D figure-eight route, colour choice gates and continuous waypoint geometry. |
 | `ground-lizard.js` | Articulated IK lizard, started only after the WebGL world's bridge is ready. |
 | `skybox.png` | Local sky panorama, loaded by relative path. |
 | `emu/champion.emupolicy` | Public trained neural policy (~0.89 MB); loaded only on request. |
@@ -81,7 +82,7 @@ On mobile, **Recenter** makes the current phone angle neutral. Motion sensing re
 
 ## Hidden race
 
-Find the small stone arch beyond the tree. Passing through it reveals green, orange and red course choices ahead of you. Each course follows a looping 3D route over the meadow and returns to the arch. Skipping one checkpoint costs five seconds, while a 30-second gap without progress ends the attempt. Personal bests are stored only in the browser with `localStorage`.
+Find the first stone arch beyond the tree. Flying through it reveals green, orange and red colour gates, now lower and farther downrange so you have time to choose. Each course is a big 3-D **figure eight**: the first centre crossing skims near the tree and the second passes overhead, with extra noise and steeper climbs on higher difficulties. The butterfly gets a race-only physical wingbeat upgrade — you still need to flap, carry speed and manage stamina. The race ends through the original arch. Skipping one checkpoint costs five seconds, while a 30-second gap without progress ends the attempt. Personal bests are stored only in the browser with `localStorage`.
 
 ## Notes
 
