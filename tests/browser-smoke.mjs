@@ -134,6 +134,30 @@ try{
  assert.equal(robotRequests.length,0,'looking around may not trigger robot downloads');
  await page.locator('#flyExit').click();
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===false);
+
+ // Before loading MuJoCo, verify the same playable butterfly can actually
+ // climb under repeated flaps in the untouched open-meadow physics model.
+ await page.goto('http://127.0.0.1:8765/meadow.html?climb-demo=1',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ const climbStart=await page.evaluate(()=>window.__meadowFlight.state());
+ await page.keyboard.down('s');
+ await page.keyboard.down('Space');
+ await page.evaluate(()=>window.__meadowStep(10));
+ await page.keyboard.up('Space');
+ await page.keyboard.up('s');
+ const climbEnd=await page.evaluate(()=>window.__meadowFlight.state());
+ const climbGain=climbEnd.pos[1]-climbStart.pos[1];
+ console.log('Butterfly ten-second continuous powered climb:',JSON.stringify({
+  gainM:climbGain,verticalMps:climbGain/10,flaps:climbEnd.flaps-climbStart.flaps,
+  speedMps:climbEnd.speed,energy:climbEnd.energy,stalled:climbEnd.stalled,
+  land:climbEnd.landed
+ }));
+ assert.ok(climbGain>4.5,'butterfly must have physical powered climb rate for upper tree pass');
+ assert.equal(climbEnd.landed,false,'continuous ascent must not finish on the ground');
+ assert.equal(robotRequests.length,0,'butterfly climb trial must not fetch optional EMU assets');
+
+ await page.goto('http://127.0.0.1:8765/meadow.html',{waitUntil:'domcontentloaded'});
+ await page.locator('#emuStart').waitFor({state:'visible',timeout:30000});
  // Observe actual progress DOM mutations as network chunks arrive.
  await page.evaluate(()=>{
   window.__emuProgressSamples=[];
