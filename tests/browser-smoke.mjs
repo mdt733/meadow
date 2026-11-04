@@ -184,6 +184,24 @@ try{
  assert.equal(cruise.stalled,false,'climb must not enter the wing stall state');
  assert.equal(cruise.landed,false);
 
+ // Exercise the ACTUAL in-browser arch -> colour gate -> course selection
+ // pipeline, not merely the pure Node geometry generator.
+ await page.goto('http://127.0.0.1:8765/meadow.html?race-demo=red',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().race.mode==='running');
+ const redStart=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(redStart.race.course,2,'red entry should select the hardest circuit');
+ assert.ok(redStart.race.total>30,'red should produce a full long figure eight');
+ assert.equal(redStart.race.courseGates.length,redStart.race.total);
+ const liveFirst=redStart.race.courseGates[0],liveLast=redStart.race.courseGates.at(-1);
+ assert.ok(liveFirst.pos.every(Number.isFinite));
+ assert.ok(liveLast.pos.every(Number.isFinite));
+ assert.equal(robotRequests.length,0,'red race does not require neural robot downloads');
+ await page.evaluate(()=>window.__meadowStep(.25));
+ const redAfter=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.ok(redAfter.pos.every(Number.isFinite)&&redAfter.speed>0,
+  'physically flown red figure eight must remain numerically sound');
+ await page.screenshot({path:'artifacts/red-figure-eight-race.png'});
+
  await page.goto('http://127.0.0.1:8765/meadow.html',{waitUntil:'domcontentloaded'});
  await page.locator('#emuStart').waitFor({state:'visible',timeout:30000});
  // Observe actual progress DOM mutations as network chunks arrive.
