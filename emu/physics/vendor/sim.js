@@ -36,10 +36,14 @@ class CapsuleGeometry extends THREE.BufferGeometry {
 }
 
 export class EmuBrowserSim {
-  static async create(canvas, bundle) {
+  static async create(canvas, bundle, wasmBinary = null) {
     if (!mujocoModulePromise) {
+      // Meadow passes the actual bytes tracked by its download bar. Emscripten
+      // uses wasmBinary directly rather than secretly downloading it a second
+      // time during WebAssembly initialization. Other viewers remain unchanged.
       mujocoModulePromise = loadMujoco({
         locateFile: (path) => path.endsWith('.wasm') ? mujocoWasmUrl : path,
+        ...(wasmBinary ? {wasmBinary} : {}),
       });
     }
     const mujoco = await mujocoModulePromise;
