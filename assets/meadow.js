@@ -992,15 +992,11 @@ const flyHeading=()=>[Math.sin(flight.b.heading)*Math.cos(flight.b.pitch),Math.s
 // No physics engine or course assets: checkpoints are a handful of procedural
 // circles, positioned along smooth, preplanned loops. Colours denote difficulty.
 const RACE_START=[RACE_ARCH_X,height(RACE_ARCH_X,RACE_ARCH_Z)+1.40*RACE_ARCH_SCALE,RACE_ARCH_Z],RACE_TIMEOUT=30,RACE_SKIP_PENALTY=5;
-// Closed aerial circuits orbit the meadow in the SAME direction as the entry.
-// Each difficulty has its own radial meanders and altitude profile. The
-// selectable ring is part of the departure, and the last spline tangent
-// points straight through the stone arch: no start/end hairpins.
+// Three colour-coded gates lead to a shared figure-eight centred close
+// to the apple tree, with a lower first crossing and upper second pass.
+// The final ring still closes precisely through the original arch.
 const race={mode:'idle',gates:[],choices:[],boosts:[],index:0,course:-1,elapsed:0,penalty:0,sinceGate:0,
- boostTime:0,finishedAt:0,best:null,notice:'',noticeTime:0,sense:1,entryForward:RACE_ARCH_FORWARD};
-function raceGate(p,previous,radius,color,boost=false){
- const n=norm(sub(p,previous));return {pos:p,normal:n,radius,color,boost};
-}
+ boostTime:0,finishedAt:0,best:null,notice:'',noticeTime:0,entryForward:RACE_ARCH_FORWARD};
 // Longer, lower colour choices; then a true figure-eight with two distinct
 // centre passes near the tree (low first, high above the canopy second).
 function choiceGates(direction){return raceChoices(RACE_START,direction,height);}
@@ -1010,7 +1006,7 @@ function raceCourse(index){
 }
 function raceReset(){race.mode='idle';race.gates.length=0;race.choices.length=0;race.boosts.length=0;
  race.index=0;race.course=-1;race.elapsed=0;race.penalty=0;race.sinceGate=0;race.boostTime=0;race.finishedAt=0;
- race.notice='';race.noticeTime=0;race.sense=1;race.entryForward=RACE_ARCH_FORWARD;}
+ race.notice='';race.noticeTime=0;race.entryForward=RACE_ARCH_FORWARD;}
 function raceToast(title,detail,seconds=4){
  const node=$('raceToast');node.innerHTML='';
  const head=document.createElement('strong');head.textContent=title;
@@ -1040,7 +1036,6 @@ function raceCrossing(a,b){
   if(throughGate(a,b,{pos:RACE_START,normal:RACE_ARCH_FORWARD,radius:.98*RACE_ARCH_SCALE})||
      throughGate(b,a,{pos:RACE_START,normal:RACE_ARCH_FORWARD,radius:.98*RACE_ARCH_SCALE})){
    const travel=sub(b,a),forward=Math.hypot(travel[0],travel[2])>.0001?travel:flyHeading();
-   race.sense=dot(forward,RACE_ARCH_FORWARD)>=0?1:-1;
    race.entryForward=norm([forward[0],0,forward[2]]);
    race.mode='choices';race.choices=choiceGates(forward);race.sinceGate=0;
    raceToast('Choose your route','GREEN · relaxed    ORANGE · lively    RED · steep climbs',8);
