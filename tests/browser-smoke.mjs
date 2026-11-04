@@ -3,6 +3,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
+import {ROBOT_DOWNLOAD_BYTES} from '../emu/emu.js';
 
 const browser=await chromium.launch({
  headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--disable-dev-shm-usage']
@@ -125,7 +126,7 @@ try{
  const progressSamples=await page.evaluate(()=>window.__emuProgressSamples);
  assert.ok(progressSamples.some(p=>p.value>.001 && p.value<.999),
    'the progress bar must show real intermediate bytes, not jump from zero to 100%');
- assert.ok(progressSamples.some(p=>p.detail.includes((11948084/1e6).toFixed(1)+' MB') && p.detail.includes('100%')),
+ assert.ok(progressSamples.some(p=>p.detail.includes((ROBOT_DOWNLOAD_BYTES/1e6).toFixed(1)+' MB') && p.detail.includes('100%')),
    'the bar must finish with the actual ≈12 MB total');
  console.log('Download progress samples:',progressSamples.length,
              'max:',Math.max(...progressSamples.map(p=>p.value)));
@@ -250,6 +251,29 @@ try{
   'physical D turn must rotate toward world negative-X, which camera shows on screen RIGHT');
  assert.ok(angles.left>-.02,
   'physical A turn must oppose the right turn rather than continuing left');
+
+ // A 5-second real physical walking stretch checks more than a single
+ // accelerating stride. This does NOT synthesize root motion or bypass the
+ // 360-input actor: it advances the actual 6-servo MuJoCo control loop.
+ await page.keyboard.down('w');
+ const endurance=await page.evaluate(()=>{
+  const before=window.__meadowEmu.state().pose;
+  window.__meadowStep(5.0);
+  return {before,after:window.__meadowEmu.state().pose};
+ });
+ await page.keyboard.up('w');
+ const travel=Math.hypot(endurance.after.x-endurance.before.x,
+                         endurance.after.z-endurance.before.z);
+ console.log('Headless EMU 5-second physical endurance:',JSON.stringify({
+  distanceM:travel,falls:endurance.after.falls-endurance.before.falls,
+  frames:endurance.after.frames-endurance.before.frames,
+  avgVelocityMps:travel/5,motorTravelRad:endurance.after.motorTravelRad
+ }));
+ assert.ok(endurance.after.frames>endurance.before.frames+150,
+  'headless actor must continue receiving physical observations at 50 Hz');
+ assert.ok(travel>.25,'five seconds of forward walking must move a real body');
+ assert.ok(Number.isFinite(endurance.after.motorTravelRad+endurance.after.y),
+  'torques and physical body trajectory must remain finite');
  await page.locator('#flyExit').click();
  await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
  state=await page.evaluate(()=>window.__meadowEmu.state());
