@@ -233,6 +233,12 @@ try{
   throw error;
  }
  await page.waitForFunction(()=>window.__meadowEmu?.state().pose?.frames>5,null,{timeout:15000});
+ // The browser's variable SwiftShader RAF must not race our deterministic
+ // 50Hz physical stepping during direction and endurance measurements.
+ await page.evaluate(()=>{
+  const pause=document.getElementById('pause');
+  if(pause.getAttribute('aria-pressed')!=='true')pause.click();
+ });
  let state=await page.evaluate(()=>window.__meadowEmu.state());
  assert.equal(requests.length,1,'Actor is downloaded exactly once on opt in');
  assert.equal(robotRequests.filter(x=>x.includes('.wasm')).length,1,
@@ -344,7 +350,7 @@ try{
  await page.keyboard.down('a');
  const leftTurn=await page.evaluate(()=>{
   const before=window.__meadowEmu.state();
-  window.__meadowStep(1.0);
+  window.__meadowStep(2.0);
   return {before,after:window.__meadowEmu.state()};
  });
  await page.keyboard.up('a');
