@@ -48,6 +48,7 @@ test('each difficulty is one continuous traversable course that closes through o
  }));
  for(const [i,gates] of all.entries()){
   assert.ok(gates.length>20,'large figure-eight needs meaningful checkpoints');
+  let distanceM=0,maxUpGrade=0;
   const final=gates.at(-1);
   assert.ok(norm(final.pos.map((v,k)=>v-arch[k]))<1e-7,'finish in real stone arch');
   assert.ok(Math.abs(norm(final.normal)-1)<1e-6,'normal remains unit length');
@@ -59,14 +60,20 @@ test('each difficulty is one continuous traversable course that closes through o
    if(j>0){
     const b=gates[j-1];
     const step=norm(a.pos.map((n,k)=>n-b.pos[k]));
+    distanceM+=step;
     assert.ok(step<9,'no discontinuity between ring centres');
     const planar=norm([a.pos[0]-b.pos[0],a.pos[2]-b.pos[2]]);
     if(a.pos[1]>b.pos[1]&&planar>1){
-     assert.ok((a.pos[1]-b.pos[1])/planar<.43,
+     const grade=(a.pos[1]-b.pos[1])/planar;
+     maxUpGrade=Math.max(maxUpGrade,grade);
+     assert.ok(grade<.43,
       'course climb should be attainable with real flapping rather than a teleport');
     }
    }
   }
+  console.log('Race geometry '+RACE_TYPES[i].name+': '+gates.length+
+   ' rings, '+distanceM.toFixed(1)+'m of path, maximum uphill grade '+
+   (maxUpGrade*100).toFixed(1)+'%');
  }
  assert.ok(all[2].length>=all[0].length,'harder course has denser/smaller ring spacing');
 });
