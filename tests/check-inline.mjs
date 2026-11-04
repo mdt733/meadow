@@ -14,7 +14,8 @@ for(const [,attrs,source] of inline){
 if(count<1)throw Error('No inline HTML/bootstrap script found');
 for(const [asset,path] of [
  ['assets/meadow.js','../assets/meadow.js'],
- ['assets/flight-physics.js','../assets/flight-physics.js']
+ ['assets/flight-physics.js','../assets/flight-physics.js'],
+ ['assets/race-course.js','../assets/race-course.js']
 ]){
  execFileSync(process.execPath,['--input-type=module','--check'],{
   input:read(path),stdio:['pipe','pipe','pipe']
@@ -27,4 +28,4 @@ if(!read('../assets/meadow.js').includes("import('../ground-lizard.js')"))
  throw Error('Lizard must load after the Meadow world bridge is initialised');
 if(!html.includes('href="assets/meadow.css"'))
  throw Error('Meadow stylesheet is not loaded');
-console.log('Parsed Meadow HTML, two ES modules, lizard and CSS references.');
+console.log('Parsed Meadow HTML, three ES modules, lizard and CSS references.');
