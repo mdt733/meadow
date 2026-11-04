@@ -49,7 +49,8 @@ test('Meadow body + heading + collision terrain all share right-positive coordin
  assert.match(source,/heading:-nav\.heading/);
  assert.match(source,/p\[0\]-R\[3\]\*x-R\[4\]\*y-R\[5\]\*z/);
  assert.match(source,/yaw:-clamp\(error\*1\.3/);
- assert.match(html,/yaw:-steering/);
+ assert.match(html,/yaw:steering/);
+ assert.match(html,/forward>=0\?forward\*\.56:forward\*\.34/);
 });
 test('the robot spawns in a broad outer-meadow clearing with a camera independent of torso bob',()=>{
  const html=read('../meadow.html');
