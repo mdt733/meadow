@@ -175,12 +175,13 @@ try{
   }
   const end=window.__meadowFlight.state();
   return {gainM:end.pos[1]-start.pos[1],speedMps:end.speed,energy:end.energy,
-    flaps:end.flaps-start.flaps,landed:end.landed};
+    flaps:end.flaps-start.flaps,landed:end.landed,stalled:end.stalled};
  });
  await page.keyboard.up('Space');
  console.log('Butterfly ten-second pitched cruising climb:',JSON.stringify(cruise));
- assert.ok(cruise.gainM>3,'managed-pitch flight must still climb');
- assert.ok(cruise.speedMps>1.4,'managed-pitch climb must retain steering airspeed');
+ assert.ok(cruise.gainM>7,'race flight must climb enough for red upper-tree pass');
+ assert.ok(cruise.speedMps>1.5,'climb must retain steering speed for the next race ring');
+ assert.equal(cruise.stalled,false,'climb must not enter the wing stall state');
  assert.equal(cruise.landed,false);
 
  await page.goto('http://127.0.0.1:8765/meadow.html',{waitUntil:'domcontentloaded'});
