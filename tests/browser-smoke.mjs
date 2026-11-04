@@ -156,6 +156,29 @@ try{
  assert.equal(climbEnd.landed,false,'continuous ascent must not finish on the ground');
  assert.equal(robotRequests.length,0,'butterfly climb trial must not fetch optional EMU assets');
 
+ // Maximum pull-up is intentionally slow; a competent pilot should also be
+ // able to use smaller pitch corrections to ascend *with* forward airspeed.
+ await page.goto('http://127.0.0.1:8765/meadow.html?climb-demo=1',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.keyboard.down('Space');
+ const cruise=await page.evaluate(()=>{
+  const start=window.__meadowFlight.state();
+  for(let i=0;i<20;i++){
+   window.dispatchEvent(new KeyboardEvent('keydown',{key:'s',code:'KeyS',bubbles:true}));
+   window.__meadowStep(.17);
+   window.dispatchEvent(new KeyboardEvent('keyup',{key:'s',code:'KeyS',bubbles:true}));
+   window.__meadowStep(.33);
+  }
+  const end=window.__meadowFlight.state();
+  return {gainM:end.pos[1]-start.pos[1],speedMps:end.speed,energy:end.energy,
+    flaps:end.flaps-start.flaps,landed:end.landed};
+ });
+ await page.keyboard.up('Space');
+ console.log('Butterfly ten-second pitched cruising climb:',JSON.stringify(cruise));
+ assert.ok(cruise.gainM>3,'managed-pitch flight must still climb');
+ assert.ok(cruise.speedMps>1.4,'managed-pitch climb must retain steering airspeed');
+ assert.equal(cruise.landed,false);
+
  await page.goto('http://127.0.0.1:8765/meadow.html',{waitUntil:'domcontentloaded'});
  await page.locator('#emuStart').waitFor({state:'visible',timeout:30000});
  // Observe actual progress DOM mutations as network chunks arrive.
