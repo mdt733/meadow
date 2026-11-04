@@ -2171,7 +2171,7 @@ canvas.addEventListener('wheel',e=>{
  if(flight.active){
   // Trackpad and mouse wheels both scale distance smoothly. Keep this zoom
   // until the visitor changes it, even after the orbit drifts back to chase.
-  flight.cameraZoom=clamp(flight.cameraZoom*Math.exp(clamp(e.deltaY*.0013,-.30,.30)),.24,3.5);
+  flight.cameraZoom=clamp(flight.cameraZoom*Math.exp(clamp(e.deltaY*.0017,-.42,.42)),.24,3.5);
  }else{
   radius=clamp(radius+Math.sign(e.deltaY)*1.15,9,42);saveCamera();
  }
