@@ -84,15 +84,38 @@ export function makeFigureEightCourse({index,choice,start,direction,height,finis
  bezier(last,add(last,mul(outT,5.5)),
   sub(start,mul(f,6)),start,125,true);
  const total=distance[distance.length-1],count=Math.max(18,Math.round(total/kind.step));
+ // Guarantee a real checkpoint at EACH shared-X/Z tree crossing. Regular
+ // arc-length ring spacing alone can otherwise miss the defining feature
+ // of a figure eight by a few metres.
+ function nearestDistance(pos){
+  let closest=Infinity,idx=0;
+  for(let i=0;i<points.length;i++){
+   const delta=length(sub(points[i],pos));
+   if(delta<closest){closest=delta;idx=i;}
+  }
+  return distance[idx];
+ }
+ const mandatory=[
+  {milestone:'low',pos:at(0),normal:tangent(at,0)},
+  {milestone:'high',pos:at(Math.PI),normal:tangent(at,Math.PI)}
+ ].map(m=>({...m,d:nearestDistance(m.pos)}));
+ const samples=Array.from({length:count-1},(_,k)=>total*(k+1)/count)
+  .filter(d=>mandatory.every(m=>Math.abs(d-m.d)>kind.step*.42));
+ const scheduled=[...samples,...mandatory.map(m=>m.d),total].sort((a,b)=>a-b);
  const gates=[];let cursor=1;
- for(let k=1;k<=count;k++){
-  const d=total*k/count;
+ for(let k=0;k<scheduled.length;k++){
+  const d=scheduled[k],last=k===scheduled.length-1;
+  const milestone=mandatory.find(m=>Math.abs(d-m.d)<1e-5);
   while(cursor<distance.length-1&&distance[cursor]<d)cursor++;
   const a=cursor-1,b=cursor,t=clamp((d-distance[a])/Math.max(1e-8,distance[b]-distance[a]),0,1);
-  const pos=k===count?[...start]:add(mul(points[a],1-t),mul(points[b],t));
-  const normal=k===count?f:norm(add(mul(directions[a],1-t),mul(directions[b],t)));
+  const pos=last?[...start]:milestone?[...milestone.pos]:
+   add(mul(points[a],1-t),mul(points[b],t));
+  const normal=last?f:milestone?[...milestone.normal]:
+   norm(add(mul(directions[a],1-t),mul(directions[b],t)));
   gates.push({pos,normal,color:kind.color,
-   radius:k===count?finishRadius:kind.radius,boost:k%4===3&&k!==count});
+   radius:last?finishRadius:kind.radius,
+   milestone:milestone?.milestone||null,
+   boost:k%4===2&&!last&&!milestone});
  }
  return gates;
 }
