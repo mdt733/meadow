@@ -27,7 +27,7 @@ try{
  assert.equal(await page.locator('#flyStart').isVisible(),true,'Butterfly launch still visible');
  assert.equal(await page.locator('#webgl-fallback').isVisible(),false,'WebGL fallback shown');
  assert.equal(robotRequests.length,0,'no robot assets may download on an idle meadow');
- assert.match(await page.locator('#emuStart').textContent(),/12\.5 MB download/);
+ assert.match(await page.locator('#emuStart').textContent(),/12\.0 MB download/);
  await page.screenshot({path:'artifacts/emu-walk-button.png'});
  // Flying the butterfly should be genuinely free of all robot downloads.
  await page.locator('#flyStart').click();
@@ -114,8 +114,8 @@ try{
  const progressSamples=await page.evaluate(()=>window.__emuProgressSamples);
  assert.ok(progressSamples.some(p=>p.value>.001 && p.value<.999),
    'the progress bar must show real intermediate bytes, not jump from zero to 100%');
- assert.ok(progressSamples.some(p=>p.detail.includes('12.5 MB') && p.detail.includes('100%')),
-   'the bar must finish with the actual 12.5 MB total');
+ assert.ok(progressSamples.some(p=>p.detail.includes('12.0 MB') && p.detail.includes('100%')),
+   'the bar must finish with the actual 12.0 MB total');
  console.log('Download progress samples:',progressSamples.length,
              'max:',Math.max(...progressSamples.map(p=>p.value)));
  assert.equal(state.loaded,true);
