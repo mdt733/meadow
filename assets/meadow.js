@@ -1195,7 +1195,7 @@ function mountEmu(){
  if(!emu||!flight.active)return;
  emuRiding=true;flight.gatePaused=false;$('emuGatePrompt').hidden=true;flight.landed=false;flight.perch=null;flight.perchFlower=null;
  flight.keys=Object.create(null);resetJoystick();flight.cameraEye=null;emuCameraRig=null;resetPilotCamera();
- $('emuWake').hidden=true;$('emuLeave').hidden=false;
+ $('emuGatePrompt').hidden=true;$('emuLeave').hidden=false;
  $('flyHudTitle').textContent='Butterfly riding EMU';
  document.querySelector('.fly-flap').textContent='HOP OFF 🦋';
  $('flyInstructions').textContent='W/S · walk   A/D · turn   Drag · look around   Scroll / pinch · zoom   Space · dismount   Esc · exit';
@@ -2060,6 +2060,14 @@ canvas.addEventListener('wheel',e=>{
 },{passive:false});
 function flightKey(e,isDown){
  if(!flight.active)return false;
+ if(flight.gatePaused){
+  if(e.key==='Escape'&&isDown){e.preventDefault();leaveEmuGate();return true;}
+  if(e.target?.closest?.('#emuGatePrompt'))return false;
+  if(['w','a','s','d',' '].includes((e.key||'').toLowerCase())||e.code==='Space'){
+   e.preventDefault();return true;
+  }
+  return false;
+ }
  if(emuRiding&&isDown&&(e.code==='Space'||e.key===' ')){e.preventDefault();dismountEmu();return true;}
  const key=e.code==='Space'||e.key===' '?'space':(e.key||'').toLowerCase();
  if(['w','a','s','d','space'].includes(key)){
@@ -2088,18 +2096,20 @@ function tick(ms){
 setPaused(paused);resize();requestAnimationFrame(tick);
 // Dedicated standalone pilot URL, for mobile browsers that restrict iframe fullscreen.
 if(new URLSearchParams(location.search).has('pilot'))beginFlight();
-window.__meadowFlight={start:beginFlight,stop:endFlight,state:()=>({active:flight.active,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},tilt:{enabled:tilt.enabled,ready:tilt.ready,bank:tilt.bank,pitch:tilt.pitch,angle:tilt.angle},joystick:{x:joystick.x,y:joystick.y},fullscreen:!!document.fullscreenElement,pos:flight.b?.pos.slice(),speed:flight.speed,gamma:flight.gamma,verticalSpeed:flight.vs,mode:flight.mode,stalled:flight.stalled,aoa:flight.aoa,lift:flight.lift,drag:flight.drag,heading:flight.b?.heading,nectar:flight.nectar,flaps:flight.flapCount,energy:flight.b?.energy,landed:flight.landed,perchedOnFlower:!!flight.perchFlower,perch:flight.perch?.type||null,safe:flight.landed&&!vulnerablePerch(flight.perch),catches:flight.catches,availableNectar:flowers.filter((f,i)=>f.nectar&&!flight.visit.has(i)).length,race:{mode:race.mode,course:race.course,index:race.index,total:race.gates.length,elapsed:race.elapsed,penalty:race.penalty,scoredTime:race.elapsed+race.penalty,sinceGate:race.sinceGate,boostTime:race.boostTime,best:race.best,next:race.mode==='running'?race.gates[race.index]?.pos:race.mode==='idle'?RACE_START:null,choices:race.choices.map(g=>({name:g.name,pos:g.pos}))}})};
+window.__meadowFlight={start:beginFlight,stop:endFlight,state:()=>({active:flight.active,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},gatePaused:flight.gatePaused,tilt:{enabled:tilt.enabled,ready:tilt.ready,bank:tilt.bank,pitch:tilt.pitch,angle:tilt.angle},joystick:{x:joystick.x,y:joystick.y},fullscreen:!!document.fullscreenElement,pos:flight.b?.pos.slice(),speed:flight.speed,gamma:flight.gamma,verticalSpeed:flight.vs,mode:flight.mode,stalled:flight.stalled,aoa:flight.aoa,lift:flight.lift,drag:flight.drag,heading:flight.b?.heading,nectar:flight.nectar,flaps:flight.flapCount,energy:flight.b?.energy,landed:flight.landed,perchedOnFlower:!!flight.perchFlower,perch:flight.perch?.type||null,safe:flight.landed&&!vulnerablePerch(flight.perch),catches:flight.catches,availableNectar:flowers.filter((f,i)=>f.nectar&&!flight.visit.has(i)).length,race:{mode:race.mode,course:race.course,index:race.index,total:race.gates.length,elapsed:race.elapsed,penalty:race.penalty,scoredTime:race.elapsed+race.penalty,sinceGate:race.sinceGate,boostTime:race.boostTime,best:race.best,next:race.mode==='running'?race.gates[race.index]?.pos:race.mode==='idle'?RACE_START:null,choices:race.choices.map(g=>({name:g.name,pos:g.pos})),courseGates:race.gates.map(g=>({pos:[...g.pos],normal:[...g.normal],radius:g.radius}))}})};
 window.__meadowStep=(seconds)=>{let count=Math.ceil(seconds/.05);for(let i=0;i<count;i++){time+=.05;evolve(.05,time);stepSwing(.05,time);stepEmu(.05);stepFlight(.05);stepPollen(.05);stepAirLife(.05)}draw()};
-// Explicit preview route for browser testing; normal visits still need a rock landing.
-if(new URLSearchParams(location.search).has('emu-demo')){
+// Deterministic browser-only entrance preview. It uses the SAME swept gate
+// detector as physical flight; no robot assets are loaded without clicking.
+if(new URLSearchParams(location.search).has('emu-arch-demo')||
+   new URLSearchParams(location.search).has('emu-demo')){
  beginFlight();
- const rock=rockSurfaces.find(r=>r.emuWake);
- const top=rock && rockHeightAt(rock,EMU_ROCK.x,EMU_ROCK.z);
- if(rock&&top)landFlight({type:'rock',pos:[EMU_ROCK.x,top.y+.12,EMU_ROCK.z],
-  normal:top.normal,emuWake:true});
+ const p=EMU_ARCH_CENTER,forward=mul(EMU_ARCH_FORWARD,2);
+ enterEmuGate(sub(p,forward),add(p,forward));
 }
 window.__meadowEmu={start:startRobotRide,state:()=>({loaded:!!emu,riding:emuRiding,loading:emuLoading,
-  pose:emu?.pose||null,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},commandYaw:emu?.sim?.commandTarget?.yaw??null,commandVx:emu?.sim?.commandTarget?.vx??null,headingTarget:emu?.sim?.headingTarget??null,rock:{...EMU_ROCK},clearing:{...EMU_CLEARING},cameraRig:emuCameraRig?{x:emuCameraRig.x,y:emuCameraRig.y,z:emuCameraRig.z,heading:emuCameraRig.h}:null}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
+  pose:emu?.pose||null,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},commandYaw:emu?.sim?.commandTarget?.yaw??null,commandVx:emu?.sim?.commandTarget?.vx??null,headingTarget:emu?.sim?.headingTarget??null,arch:{x:EMU_ARCH_X,z:EMU_ARCH_Z,center:[...EMU_ARCH_CENTER],
+    forward:[...EMU_ARCH_FORWARD],radius:1.10*EMU_ARCH_SCALE,paused:flight.gatePaused},
+  clearing:{...EMU_CLEARING},cameraRig:emuCameraRig?{x:emuCameraRig.x,y:emuCameraRig.y,z:emuCameraRig.z,heading:emuCameraRig.h}:null}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
 window.__meadowDiagnostics=()=>({cameraSettings:{...cameraSettings},render:'webgl',lizardConfig:{...lizardConfig},lizardStrokeCount:lizardLines.length,landscape:{...landscape},lighting:{...lighting},groundTriangles:Math.round(land.count/3),leaves:Math.round(foliage.count/6),apples:Math.round(fruit.count/270),swingAngle:swingState.angle,swingLength:ropeLength,skybox:skySource!=='procedural',skyboxSource:skySource,skyboxStatus:skyStatus,skyLoadAttempts:[...skyLoadAttempts],skyboxURL:SKYBOX_URL,skyboxTextureComplete:gl.isTexture(skyTex),fairyDoor:true,doorScale:.27,scenery:{...sceneryCounts},nectarFlowers:flowers.filter(f=>f.nectar).length,perchSites:perchSites.length,rockCollisionSurfaces:rockSurfaces.length,visiblePollen:pollen.length,ambientMotes:ambientMotes.length,fallingLeaves:fallingLeaves.length,groundLeaves:GROUND_LEAF_COUNT,leafSources:leafSources.length,flightCatches:flight.catches,camera:{turn,elev,radius},butterflies:bugs.slice(0,config.count).map(b=>({x:b.pos[0],y:b.pos[1],z:b.pos[2],state:b.state,intent:b.intent,tourStops:b.tourStops,target:[...b.target],mode:b.mode,vel:b.vel,pitch:b.pitch,bank:b.bank,aoa:b.aoa,speed:b.speed,energy:b.energy,wingPhase:b.phase,altitude:b.pos[1]-height(b.pos[0],b.pos[2])}))});
 // Import after the scene publishes its world bridge, so lizard IK never
 // starts against a missing renderer (module evaluation order is explicit).
