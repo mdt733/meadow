@@ -1396,9 +1396,10 @@ function stepEmu(dt){
   if(k.space){dismountEmu();return;}
   const forward=clamp((k.w?1:0)-(k.s?1:0)+joystick.y,-1,1);
   const steering=clamp((k.d?1:0)-(k.a?1:0)+joystick.x,-1,1);
-  // EMU's original viewer maps screen-right joystick to NEGATIVE yaw.
-  // Do not flip camera axes or invert the robot's physical heading to cheat.
-  command={vx:forward*.27,vy:0,yaw:-steering};
+  // The rider view has its own mirrored yaw convention. Translate the
+  // operator's screen-right input here, never by fudging rigid-body poses.
+  // Full W requests 0.56 m/s (within this champion's 0.669 m/s limit).
+  command={vx:forward>=0?forward*.56:forward*.34,vy:0,yaw:steering};
  }else command=emu.autopilot(window.__meadowWorld?.getLizard?.());
  emu.advance(dt,command);
  if(emuRiding&&flight.b){
