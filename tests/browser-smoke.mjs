@@ -95,18 +95,21 @@ try{
    'the entire central flat physical patch must be level');
  await page.keyboard.down('d');
  await page.evaluate(()=>window.__meadowStep(.1));
- assert.ok((await page.evaluate(()=>window.__meadowEmu.state().commandYaw))<-.1,
-   'D/right must request negative MuJoCo yaw, like the official viewer');
+ assert.ok((await page.evaluate(()=>window.__meadowEmu.state().commandYaw))>.1,
+   'D/right must request positive rider yaw after correcting the mirrored steering');
  await page.keyboard.up('d');
  await page.keyboard.down('a');
  await page.evaluate(()=>window.__meadowStep(.1));
- assert.ok((await page.evaluate(()=>window.__meadowEmu.state().commandYaw))>.1,
-   'A/left must request positive MuJoCo yaw');
+ assert.ok((await page.evaluate(()=>window.__meadowEmu.state().commandYaw))<-.1,
+   'A/left must request negative rider yaw');
  await page.keyboard.up('a');
  const rig=await page.evaluate(()=>window.__meadowEmu.state().cameraRig);
  assert.ok(rig&&Number.isFinite(rig.x+rig.y+rig.z+rig.heading),
    'third-person ride must use the independent smoothed camera rig');
  await page.keyboard.down('w');
+ await page.evaluate(()=>window.__meadowStep(.1));
+ assert.ok(Math.abs((await page.evaluate(()=>window.__meadowEmu.state().commandVx))-.56)<.005,
+   'full W must request 0.56 m/s within the policy trained forward speed envelope');
  // Deterministic physics stepping avoids tying the test to SwiftShader's
  // variable CPU render FPS. The website still uses its normal RAF in play.
  const measure=await page.evaluate(()=>{
@@ -125,6 +128,28 @@ try{
  assert.equal(await page.locator('#emuLeave').isVisible(),true);
  assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly riding EMU');
  await page.screenshot({path:'artifacts/emu-butterfly-rider.png'});
+ // Observe actual turning response over many control frames, rather than
+ // assuming the command sign alone proves the physical direction of travel.
+ await page.keyboard.down('d');
+ const rightTurn=await page.evaluate(()=>{
+  const before=window.__meadowEmu.state();
+  window.__meadowStep(1.0);
+  return {before,after:window.__meadowEmu.state()};
+ });
+ await page.keyboard.up('d');
+ await page.keyboard.down('a');
+ const leftTurn=await page.evaluate(()=>{
+  const before=window.__meadowEmu.state();
+  window.__meadowStep(1.0);
+  return {before,after:window.__meadowEmu.state()};
+ });
+ await page.keyboard.up('a');
+ console.log('Physical rider turn diagnostics:',JSON.stringify({
+  right:{before:rightTurn.before.pose.heading,after:rightTurn.after.pose.heading,
+         falls:rightTurn.after.pose.falls,command:rightTurn.after.commandYaw},
+  left:{before:leftTurn.before.pose.heading,after:leftTurn.after.pose.heading,
+        falls:leftTurn.after.pose.falls,command:leftTurn.after.commandYaw}
+ }));
 
  await page.locator('#flyExit').click();
  await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
