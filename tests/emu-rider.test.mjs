@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,statSync} from 'node:fs';
+import {ROBOT_ASSETS,ROBOT_DOWNLOAD_BYTES} from '../emu/emu.js';
 import {parsePolicy,PolicyRunner} from '../emu/policy.js';
 
 const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
@@ -58,6 +59,37 @@ test('the robot spawns in a broad outer-meadow clearing with a camera independen
  assert.match(html,/Math\.exp\(-3\.2\*dt\)/);
  assert.match(html,/emuCameraRig=null/);
 });
+test('all 12.5 MB of robot assets are explicit, accounted for and opt-in',()=>{
+ const html=read('../meadow.html'),loader=read('../emu/emu.js');
+ const upstream=read('../emu/physics/vendor/sim.js');
+ const adapter=read('../emu/physics/src/index.js');
+ assert.equal(ROBOT_ASSETS.length,3);
+ const byName=Object.fromEntries(ROBOT_ASSETS.map(a=>[a.name,a]));
+ assert.equal(ROBOT_DOWNLOAD_BYTES,ROBOT_ASSETS.reduce((sum,a)=>sum+a.bytes,0));
+ assert.ok(ROBOT_DOWNLOAD_BYTES>12e6 && ROBOT_DOWNLOAD_BYTES<13e6);
+ for(const asset of ROBOT_ASSETS){
+  assert.equal(statSync(new URL('../emu/'+asset.path.replace(/^\.\//,''),import.meta.url)).size,
+               asset.bytes,asset.name+' manifest must match the real file size');
+ }
+ assert.match(html,/Walk the robot <span class="emu-download-note">\(12\.5 MB download\)<\/span>/);
+ assert.match(html,/id="emuDownloadDetail"/);
+ assert.match(html,/id="emuProgress"/);
+ assert.match(html,/Wake EMU \(12\.5 MB download\)/);
+ assert.match(loader,/response\.body\?\.getReader/);
+ assert.match(loader,/report\(value\.byteLength,asset\.stage\)/);
+ assert.match(loader,/wasmBinary=await downloadBytes/);
+ assert.match(upstream,/wasmBinary = null/);
+ assert.match(upstream,/loadMujoco\(\{/);
+ assert.match(adapter,/EmuBrowserSim\.create\(canvas,bundle,wasmBinary\)/);
+});
+test('special rock top, diamond, sides and collision radius are all half-sized',()=>{
+ const html=read('../meadow.html');
+ assert.match(html,/topY=height\(x,z\)\+\.31/);
+ assert.match(html,/const w=\.255,d=\.24,bevel=\.325/);
+ assert.match(html,/const north=\[x,glyphY,z-\.15\]/);
+ assert.match(html,/radius:\.46,triangles:colliders,emuWake:true/);
+});
+
 test('public entrance offers walk button and rock alternative, both lazy',()=>{
  const html=read('../meadow.html');
  assert.match(html,/id="emuStart"/);
