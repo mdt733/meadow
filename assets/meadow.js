@@ -875,7 +875,7 @@ for(let i=0;i<54;i++){let b=newBug(i);bugs.push(b)}
 // the nose angle: gravity trades altitude for airspeed and lift curves the path.
 // Quantities are *specific* forces (N/kg = m/s²); tweak here for game feel.
 const flight={active:false,b:null,keys:Object.create(null),speed:1.9,gamma:-.06,
- flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,cameraZoom:1,nectar:0,
+ flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,cameraZoom:1,gatePaused:false,gateCooldown:0,nectar:0,
  visit:new Set(),landed:false,perch:null,perchFlower:null,takeoffArmed:false,touchdown:0,caughtTimer:0,catches:0,flapCount:0,vs:0,aoa:0,drag:0,lift:0,
  mode:'GLIDING'};
 const joystick={x:0,y:0,pointer:null}; // Bank right +x, climb +y.
@@ -1158,13 +1158,42 @@ function drawRaces(){
  uploadDynamic(raceBuffer,raceVerts);attributes();gl.drawArrays(gl.TRIANGLES,0,raceVerts.length/10);
 }
 
-function showEmuRockPrompt(site){
- $('emuWake').hidden=!Boolean(flight.active&&flight.landed&&site?.emuWake&&!emuLoading);
- $('emuWake').textContent=emu?'✧ Ride EMU again':'✧ Wake EMU (≈12 MB download)';
+// A real swept crossing of the second arch, in EITHER direction. The
+// butterfly rests exactly at its crossing point; neither the scene nor
+// the neural robot is downloaded/paused globally until the visitor opts in.
+function enterEmuGate(previous,next){
+ if(!flight.active||emuRiding||flight.gatePaused||time<flight.gateCooldown)return false;
+ const gate={pos:EMU_ARCH_CENTER,normal:EMU_ARCH_FORWARD,radius:1.10*EMU_ARCH_SCALE};
+ if(!throughGate(previous,next,gate)&&!throughGate(next,previous,gate))return false;
+ const ab=sub(next,previous),d=dot(ab,gate.normal);
+ const t=Math.abs(d)>1e-6?clamp(-dot(sub(previous,gate.pos),gate.normal)/d,0,1):.5;
+ const b=flight.b;
+ b.pos=add(previous,mul(ab,t));b.vel=[0,0,0];b.mode='glide';b.state='flying';
+ flight.gatePaused=true;flight.gateCooldown=time+5;
+ flight.speed=0;flight.gamma=0;flight.vs=0;flight.yawRate=0;
+ flight.keys=Object.create(null);resetJoystick();
+ $('emuGateWalk').innerHTML=emu?'🤖 Walk the robot <span class="emu-download-note">(already loaded)</span>':
+   '🤖 Walk the robot <span class="emu-download-note">(≈12 MB download)</span>';
+ $('emuGatePrompt').hidden=false;
+ $('flyMode').textContent='EMU ARCH';
+ $('flyAlert').textContent='You found the robot arch! Choose whether to walk or keep flying.';
+ $('emuGateWalk').focus({preventScroll:true});
+ return true;
 }
+function leaveEmuGate(){
+ if(!flight.gatePaused)return;
+ flight.gatePaused=false;flight.gateCooldown=time+5;
+ $('emuGatePrompt').hidden=true;
+ // Forward momentum resumes naturally; no teleport or scripted climb.
+ flight.speed=2.2;flight.gamma=.04;
+ flight.b.mode='glide';flight.b.state='flying';
+ canvas.focus({preventScroll:true});
+}
+$('emuGateContinue').onclick=leaveEmuGate;
+$('emuGateWalk').onclick=()=>startRobotRide();
 function mountEmu(){
  if(!emu||!flight.active)return;
- emuRiding=true;flight.landed=false;flight.perch=null;flight.perchFlower=null;
+ emuRiding=true;flight.gatePaused=false;$('emuGatePrompt').hidden=true;flight.landed=false;flight.perch=null;flight.perchFlower=null;
  flight.keys=Object.create(null);resetJoystick();flight.cameraEye=null;emuCameraRig=null;resetPilotCamera();
  $('emuWake').hidden=true;$('emuLeave').hidden=false;
  $('flyHudTitle').textContent='Butterfly riding EMU';
@@ -1187,13 +1216,13 @@ function dismountEmu(toFlight=true){
  }
 }
 $('emuLeave').onclick=()=>dismountEmu();
-// Both the homepage button and the actual rock landing use this ONE path.
+// The homepage button and the real fly-through arch share ONE lazy path.
 // The public homepage never fetches the 886 KB policy until a user opts in.
 async function startRobotRide(){
  if(emuLoading||emuRiding)return;
  if(!flight.active)beginFlight();
  if(emu){mountEmu();return;}
- emuLoading=true;$('emuWake').hidden=true;$('emuLoader').hidden=false;
+ emuLoading=true;$('emuGatePrompt').hidden=true;$('emuLoader').hidden=false;
  $('emuProgress').value=0;
  $('emuDownloadDetail').textContent='0.0 / ≈12 MB · 0%';
  $('emuLoadStatus').textContent='Preparing the optional download…';
@@ -1212,15 +1241,12 @@ async function startRobotRide(){
  }catch(error){
   console.error('Unable to wake EMU:',error);
   $('emuLoadStatus').textContent='Unable to wake EMU: '+String(error.message||error);
-  $('emuWake').hidden=false;$('emuWake').textContent='↻ Retry waking EMU';
+  if(flight.gatePaused){$('emuGatePrompt').hidden=false;
+   $('emuGateWalk').textContent='↻ Retry walking EMU';}
   $('flyAlert').textContent='EMU could not load: '+String(error.message||error);
  }finally{emuLoading=false;$('emuLoader').hidden=true;}
 }
 $('emuStart').onclick=startRobotRide;
-$('emuWake').onclick=()=>{
- if(!flight.active||!flight.landed||!flight.perch?.emuWake)return;
- startRobotRide();
-};
 function stepEmu(dt){
  if(!emu)return;
  let command;
@@ -1250,7 +1276,7 @@ function beginFlight(){
  Object.assign(flight.b,{pos:[x,height(x,z)+2.45,z],heading:-2.62,pitch:.09,bank:0,energy:1,phase:0,hz:1/FLY.flapInterval,mode:'glide',state:'flying',col:[.99,.70,.23]});
  flight.keys=Object.create(null);flight.active=true;flight.speed=1.9;flight.gamma=-.06;
  flight.flapCooldown=0;flight.flapGlow=0;flight.stalled=false;flight.yawRate=0;
- flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;resetPilotCamera();flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;$('emuWake').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
+ flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;resetPilotCamera();flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;flight.gatePaused=false;flight.gateCooldown=0;$('emuGatePrompt').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
  raceReset();$('flyRace').textContent='';$('raceDirection').hidden=true;$('raceToast').hidden=true;
  flight.vs=0;flight.mode='GLIDING';$('flyHud').hidden=false;$('flyStart').hidden=true;$('emuStart').hidden=true;
  document.documentElement.classList.add('flight-active');
@@ -1259,7 +1285,7 @@ function beginFlight(){
  canvas.focus({preventScroll:true});updateCamera();draw();
  if(window.parent!==window)window.parent.postMessage({type:'meadow-flight-state',active:true},location.origin);
 }
-function endFlight(){if(!flight.active)return;dismountEmu(false);$('emuWake').hidden=true;resetJoystick();setTiltMode(false);exitImmersive();document.documentElement.classList.remove('flight-active');raceReset();$('raceToast').hidden=true;$('raceDirection').hidden=true;$('flyRace').textContent='';flight.active=false;flight.keys=Object.create(null);flight.cameraEye=null;resetPilotCamera();flight.b=null;
+function endFlight(){if(!flight.active)return;dismountEmu(false);flight.gatePaused=false;$('emuGatePrompt').hidden=true;resetJoystick();setTiltMode(false);exitImmersive();document.documentElement.classList.remove('flight-active');raceReset();$('raceToast').hidden=true;$('raceDirection').hidden=true;$('flyRace').textContent='';flight.active=false;flight.keys=Object.create(null);flight.cameraEye=null;resetPilotCamera();flight.b=null;
  $('flyHud').hidden=true;$('flyStart').hidden=false;$('emuStart').hidden=false;
  down=null;updateCamera();draw();if(window.parent!==window)window.parent.postMessage({type:'meadow-flight-state',active:false},location.origin);
 }
@@ -1272,7 +1298,7 @@ function landFlight(site=null){
  flight.speed=0;flight.gamma=0;flight.yawRate=0;flight.vs=0;
  // Retain the current camera orbit across landing; release naturally drifts
  // it back behind the butterfly instead of snapping the view at touchdown.
- perchedPose(b,site);b.phase=PI/2;showEmuRockPrompt(site);
+ perchedPose(b,site);b.phase=PI/2;
  emitPollenOnFlower(site);
  // This only steers the existing lizard toward prey it can physically reach.
  // Safe tree/swing perches do NOT become mouse targets or edible butterflies.
@@ -1295,6 +1321,10 @@ function sweepNectar(from,to){
 }
 function stepFlight(dt){
  if(!flight.active)return;
+ if(flight.gatePaused){
+  // The butterfly is suspended, but other wildlife and the Meadow render.
+  flight.b.vel=[0,0,0];flight.vs=0;return;
+ }
  if(emuRiding&&emu){
   const p=emu.head,b=flight.b;b.pos=[p[0],p[1]+.055,p[2]];
   $('flySpeed').textContent=Math.abs(emu.vx).toFixed(2);
@@ -1386,6 +1416,7 @@ function stepFlight(dt){
    const next=[b.pos[0]+(Math.sin(b.heading)*horizontal+gust)*h,
                b.pos[1]+vertical*h,
                b.pos[2]+Math.cos(b.heading)*horizontal*h];
+   if(enterEmuGate(previous,next))break;
    raceCrossing(previous,next);
    // All touchdown surfaces share one contact test and stationary perch pose.
    const contact=landingContact(previous,next,vertical,horizontal);
@@ -1410,6 +1441,7 @@ function stepFlight(dt){
   b.vel=[Math.sin(b.heading)*sh,vh,Math.cos(b.heading)*sh];
   b.aoa=flight.aoa;b.speed=flight.speed;flight.vs=vh;
  }
+ if(flight.gatePaused)return;
  raceTick(dt);
  flight.caughtTimer=Math.max(0,flight.caughtTimer-dt);
  flight.mode=flight.landed?'PERCHED':flight.flapGlow>0?'POWERED':'GLIDING';
