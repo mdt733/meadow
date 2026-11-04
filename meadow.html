@@ -1396,9 +1396,11 @@ function stepEmu(dt){
   if(k.space){dismountEmu();return;}
   const forward=clamp((k.w?1:0)-(k.s?1:0)+joystick.y,-1,1);
   const steering=clamp((k.d?1:0)-(k.a?1:0)+joystick.x,-1,1);
-  // The rider view has its own mirrored yaw convention. Translate the
-  // operator's screen-right input here, never by fudging rigid-body poses.
-  // Full W requests 0.56 m/s (within this champion's 0.669 m/s limit).
+  // Meadow's RIGHT-HANDED viewMatrix looks along +Z, so screen-right
+  // is world -X. The actual MJ-to-Meadow transform maps positive MJ yaw
+  // onto the negative-X screen side: positive yaw is visually RIGHT.
+  // Keep geometry/physics unchanged; only map the player's screen input.
+  // Full W requests 0.56 m/s (within the champion's 0.669 m/s limit).
   command={vx:forward>=0?forward*.56:forward*.34,vy:0,yaw:steering};
  }else command=emu.autopilot(window.__meadowWorld?.getLizard?.());
  emu.advance(dt,command);
