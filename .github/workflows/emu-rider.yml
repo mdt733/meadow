@@ -2,7 +2,7 @@ name: EMU butterfly rider checks
 
 on:
   push:
-    branches: [feature/emu-butterfly-rider]
+    branches: [main, feature/emu-butterfly-rider]
   pull_request:
     paths:
       - 'emu/**'
