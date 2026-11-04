@@ -28,6 +28,20 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm run build
+      - name: Sync exact bundled JavaScript size into the optional loader
+        working-directory: emu/physics
+        run: |
+          node --input-type=module - <<'JS'
+          import {readFileSync,writeFileSync,statSync} from 'node:fs';
+          const path='../emu.js';
+          const original=readFileSync(path,'utf8');
+          const size=statSync('dist/emu-physics.js').size;
+          const pattern=/(name:'runtime',path:'\\.\\/physics\\/dist\\/emu-physics\\.js',bytes:)\\d+/;
+          if(!pattern.test(original))throw new Error('Runtime manifest entry missing');
+          const updated=original.replace(pattern,(_,prefix)=>prefix+size);
+          if(updated!==original)writeFileSync(path,updated);
+          console.log('Verified runtime size:',size,'bytes');
+          JS
       - name: Ensure physics bundle and actual WASM binary exist
         run: |
           test -s emu/physics/dist/emu-physics.js
@@ -38,7 +52,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f emu/physics/dist/
+          git add -f emu/physics/dist/ emu/emu.js
           if git diff --cached --quiet; then
             echo "Runtime already up-to-date."
           else
