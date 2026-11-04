@@ -34,6 +34,44 @@ try{
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
  await page.waitForTimeout(300);
  assert.equal(robotRequests.length,0,'flying the butterfly must not fetch actor, JS or WASM');
+
+ // Mouse orbit works in the AIR, not just on perches. It is camera-only.
+ await page.mouse.move(980,570);
+ await page.mouse.down();
+ await page.mouse.move(630,390,{steps:5});
+ const flightDrag=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(flightDrag.camera.dragging,true);
+ assert.ok(Math.abs(flightDrag.camera.yaw)>.3,'flying butterfly must orbit on drag');
+ assert.ok(Math.abs(flightDrag.camera.elevation-.28)>.1,'drag tilts flying view');
+ assert.equal(flightDrag.joystick.x,0,'dragging the view must not steer the joystick');
+ await page.mouse.wheel(0,-480);
+ const flightZoom=await page.evaluate(()=>window.__meadowFlight.state().camera.zoom);
+ assert.ok(flightZoom<.85,'scrolling up zooms in on airborne butterfly');
+ await page.mouse.up();
+ await page.waitForTimeout(1050);
+ const flightReturn=await page.evaluate(()=>window.__meadowFlight.state().camera);
+ assert.equal(flightReturn.dragging,false,'releasing mouse returns to chase mode');
+ assert.ok(Math.abs(flightReturn.yaw)<Math.abs(flightDrag.camera.yaw)*.80,
+  'camera must start drifting towards its normal trailing angle after release');
+ assert.ok(Math.abs(flightReturn.zoom-flightZoom)<.001,
+  'the zoom level persists while orbit angle auto-centres');
+
+ // Browser-native two-finger gesture (not a synthetic application callback).
+ const cdp=await page.context().newCDPSession(page);
+ await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+ const tp=(id,x,y)=>({id,x,y,radiusX:1,radiusY:1,force:1});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',
+  touchPoints:[tp(1,460,550),tp(2,620,550)]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',
+  touchPoints:[tp(1,370,550),tp(2,710,550)]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ const pinched=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.ok(pinched.camera.zoom<flightZoom*.75,
+  'spreading two fingertips on the canvas must pinch-zoom the view in');
+ assert.equal(pinched.camera.dragging,false,'touch release ends camera manipulation');
+ assert.equal(pinched.joystick.x,0,'pinch gesture must not steer the butterfly');
+ await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false});
+ assert.equal(robotRequests.length,0,'looking around may not trigger robot downloads');
  await page.locator('#flyExit').click();
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===false);
  // Observe actual progress DOM mutations as network chunks arrive.
@@ -80,6 +118,29 @@ try{
              'max:',Math.max(...progressSamples.map(p=>p.value)));
  assert.equal(state.loaded,true);
  assert.equal(state.riding,true);
+ // Robot's view orbit is equally independent of the actor's control commands.
+ await page.mouse.move(1020,580);
+ await page.mouse.down();
+ await page.mouse.move(680,390,{steps:5});
+ const emuCameraDrag=await page.evaluate(()=>window.__meadowEmu.state());
+ assert.equal(emuCameraDrag.camera.dragging,true);
+ assert.ok(Math.abs(emuCameraDrag.camera.yaw)>.3,
+  'third-person robot camera must orbit when dragged');
+ assert.ok(Math.abs(emuCameraDrag.camera.elevation-.28)>.1);
+ assert.equal(emuCameraDrag.commandYaw,0,
+  'looking sideways must not command actual MuJoCo yaw');
+ await page.mouse.wheel(0,440);
+ const emuZoom=await page.evaluate(()=>window.__meadowEmu.state().camera.zoom);
+ assert.ok(emuZoom>1.4,'scrolling down must zoom the robot camera out');
+ await page.mouse.up();
+ await page.waitForTimeout(950);
+ const emuCameraReturn=await page.evaluate(()=>window.__meadowEmu.state().camera);
+ assert.equal(emuCameraReturn.dragging,false);
+ assert.ok(Math.abs(emuCameraReturn.yaw)<Math.abs(emuCameraDrag.camera.yaw)*.85,
+  'robot camera must drift back to follow after the pointer is released');
+ assert.ok(Math.abs(emuCameraReturn.zoom-emuZoom)<.001,
+  'robot zoom should not reset when the orbit returns to chase');
+ assert.ok(emuCameraReturn.eye.every(Number.isFinite),'camera must remain finite');
  assert.ok(state.pose.frames>5);
  assert.equal(state.pose.physics,'MuJoCo WASM','must be actual rigid-body physics');
  assert.ok(Number.isFinite(state.pose.y));
