@@ -30,5 +30,5 @@ export const FLY={g:9.81, drag0:.055,dragV2:.065,induced:.032, liftV2:2.30,
 // with more powerful wingbeats and enough stamina for a sustained canopy
 // climb. Ordinary relaxed Meadow flight retains the original FLY tuning.
 export const RACE_FLY=Object.freeze({...FLY,
- flapImpulse:.82,flapLift:4.2,flapCost:.013,regen:.09
+ flapImpulse:1.14,flapLift:4.45,flapCost:.013,regen:.09
 });
