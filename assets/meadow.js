@@ -1,4 +1,5 @@
 import {wingForces,NPC_AERO,FLY} from './flight-physics.js';
+import {RACE_TYPES,raceChoices,makeFigureEightCourse} from './race-course.js';
 (()=>{'use strict';
 const $=id=>document.getElementById(id), canvas=$('scene');
 let emu=null,emuRiding=false,emuLoading=false;
@@ -972,89 +973,17 @@ const RACE_START=[RACE_ARCH_X,height(RACE_ARCH_X,RACE_ARCH_Z)+1.40*RACE_ARCH_SCA
 // Each difficulty has its own radial meanders and altitude profile. The
 // selectable ring is part of the departure, and the last spline tangent
 // points straight through the stone arch: no start/end hairpins.
-const RACE_TYPES=[
- {name:'Green',color:[.40,.94,.49],radius:1.85,step:5.8},
- {name:'Orange',color:[1,.63,.23],radius:1.60,step:4.9},
- {name:'Red',color:[1,.30,.35],radius:1.36,step:4.1}
-];
 const race={mode:'idle',gates:[],choices:[],boosts:[],index:0,course:-1,elapsed:0,penalty:0,sinceGate:0,
  boostTime:0,finishedAt:0,best:null,notice:'',noticeTime:0,sense:1,entryForward:RACE_ARCH_FORWARD};
 function raceGate(p,previous,radius,color,boost=false){
  const n=norm(sub(p,previous));return {pos:p,normal:n,radius,color,boost};
 }
-// The three selections are in front of the butterfly in its ACTUAL direction,
-// regardless of which side of the stone arch it happened to approach from.
-function choiceGates(direction){
- const f=norm([direction[0],0,direction[2]]),right=norm(cross([0,1,0],f));
- return RACE_TYPES.map((t,i)=>{
-  const x=RACE_START[0]+f[0]*9.2+right[0]*(i-1)*3.55;
-  const z=RACE_START[2]+f[2]*9.2+right[2]*(i-1)*3.55;
-  const p=[x,Math.max(height(x,z)+2.9,RACE_START[1]+.8),z];
-  return {...raceGate(p,sub(p,f),1.34,t.color),name:t.name};
- });
-}
-// Each height is ABOVE actual local terrain. Progress around the circuit is
-// angular, so the lap naturally closes rather than requiring a return dash.
-// Periodic radial and altitude waves taper to zero at the arch. The loop
-// therefore returns with the SAME tangent and elevation it started with.
-function racePoint(difficulty,u,sense){
- const archAngle=Math.atan2(RACE_START[2],RACE_START[0]);
- const theta=archAngle+sense*u,window=Math.sin(u/2)**2;
- const radius=Math.hypot(RACE_START[0],RACE_START[2])+window*(
-  difficulty===0?1.45*Math.sin(2*u)+.65*Math.sin(3*u):
-  difficulty===1?1.4+2.4*Math.sin(2*u+.2)+.85*Math.sin(4*u-.3):
-  2.1+3.1*Math.sin(2*u+.3)+1.2*Math.sin(5*u-.5));
- const altitude=RACE_START[1]-height(RACE_START[0],RACE_START[2])+window*(
-  difficulty===0?3.7+1.25*Math.sin(2*u-.7):
-  difficulty===1?7.8+2.25*Math.cos(1.6*(u-3.1))+.65*Math.sin(3*u):
-  12.0+3.75*Math.cos(1.8*(u-3.0))+1.1*Math.sin(3*u));
- const x=radius*Math.cos(theta),z=radius*Math.sin(theta);
- return [x,height(x,z)+altitude,z];
-}
-// One genuine, continuous 3D path: choice -> smoothly merge with an
-// undulating loop -> descend through the arch, all in the departure direction.
-// A cubic Bezier departure matches the player's heading and the loop tangent.
-// Rings are spaced by 3D arc length, so climbs don't bunch them together.
+// Longer, lower colour choices; then a true figure-eight with two distinct
+// centre passes near the tree (low first, high above the canopy second).
+function choiceGates(direction){return raceChoices(RACE_START,direction,height);}
 function raceCourse(index){
- const type=RACE_TYPES[index],choice=race.choices[index],sense=race.sense;
- const join=1.05,finish=TAU;
- const origin=choice.pos,merge=racePoint(index,join,sense);
- const arrival=norm(sub(racePoint(index,join+.01,sense),racePoint(index,join-.01,sense)));
- const control1=add(origin,add(mul(race.entryForward,6),[0,.75,0]));
- const control2=sub(merge,mul(arrival,6));
- const path=[],directions=[],cumulative=[0];
- function append(p,tangent){
-  if(path.length)cumulative.push(cumulative[cumulative.length-1]+len(sub(p,path[path.length-1])));
-  path.push(p);directions.push(norm(tangent));
- }
- const departSteps=Math.max(48,Math.ceil(len(sub(merge,origin))/.25));
- for(let j=0;j<departSteps;j++){
-  const t=j/departSteps,w=1-t;
-  const p=add(add(mul(origin,w*w*w),mul(control1,3*w*w*t)),
-   add(mul(control2,3*w*t*t),mul(merge,t*t*t)));
-  const tangent=add(add(mul(sub(control1,origin),3*w*w),mul(sub(control2,control1),6*w*t)),mul(sub(merge,control2),3*t*t));
-  append(p,tangent);
- }
- const steps=1050; // ~15cm along the circumference, generated only on race selection
- for(let j=0;j<=steps;j++){
-  const u=join+(finish-join)*j/steps;
-  const p=j===steps?[...RACE_START]:racePoint(index,u,sense);
-  const tangent=j===steps?mul(RACE_ARCH_FORWARD,sense):
-   sub(racePoint(index,u+.003,sense),racePoint(index,u-.003,sense));
-  append(p,tangent);
- }
- const total=cumulative[cumulative.length-1],count=Math.max(12,Math.round(total/type.step));
- const gates=[];let cursor=1;
- for(let k=1;k<=count;k++){
-  const distance=total*k/count;
-  while(cursor<cumulative.length-1&&cumulative[cursor]<distance)cursor++;
-  const a=cursor-1,b=cursor,t=clamp((distance-cumulative[a])/Math.max(1e-6,cumulative[b]-cumulative[a]),0,1);
-  const pos=k===count?[...RACE_START]:add(mul(path[a],1-t),mul(path[b],t));
-  const normal=k===count?mul(RACE_ARCH_FORWARD,sense):norm(add(mul(directions[a],1-t),mul(directions[b],t)));
-  gates.push({pos,normal,radius:k===count?.96*RACE_ARCH_SCALE:type.radius,
-   color:type.color,boost:k%4===3&&k!==count});
- }
- return gates;
+ return makeFigureEightCourse({index,choice:race.choices[index],start:RACE_START,
+  direction:race.entryForward,height,finishRadius:.96*RACE_ARCH_SCALE});
 }
 function raceReset(){race.mode='idle';race.gates.length=0;race.choices.length=0;race.boosts.length=0;
  race.index=0;race.course=-1;race.elapsed=0;race.penalty=0;race.sinceGate=0;race.boostTime=0;race.finishedAt=0;
@@ -1073,7 +1002,7 @@ function raceSelect(index){
   const side=norm(cross([0,1,0],gate.normal));
   return {pos:add(gate.pos,add(mul(side,(i%2?1:-1)*gate.radius*.65),[0,-.48,0])),taken:false,index:i};
  }).filter(Boolean);
- raceToast(`${RACE_TYPES[index].name} circuit`,'Follow the rings · golden pollen gives a speed boost!',3);
+ raceToast(`${RACE_TYPES[index].name} figure eight`,'First under the canopy, then over the tree · flap to climb!',4);
 }
 // Exact plane sweep catches a gate even at high speed, without rewarding
 // grazing the rim or flying through a ring backwards.
@@ -1091,7 +1020,7 @@ function raceCrossing(a,b){
    race.sense=dot(forward,RACE_ARCH_FORWARD)>=0?1:-1;
    race.entryForward=norm([forward[0],0,forward[2]]);
    race.mode='choices';race.choices=choiceGates(forward);race.sinceGate=0;
-   raceToast('Choose a circuit','GREEN · easy    ORANGE · medium    RED · hard',5);
+   raceToast('Choose your route','GREEN · relaxed    ORANGE · lively    RED · steep climbs',8);
   }
  }else if(race.mode==='choices'){
   const selected=race.choices.findIndex(gate=>throughGate(a,b,gate));
