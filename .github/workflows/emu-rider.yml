@@ -8,6 +8,7 @@ on:
       - 'emu/**'
       - 'meadow.html'
       - 'ground-lizard.js'
+      - 'assets/**'
       - 'tests/**'
 
 jobs:
