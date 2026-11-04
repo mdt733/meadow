@@ -1,8 +1,19 @@
 # EMU Butterfly Rider — actual neural policy + MuJoCo WASM physics
 
-**Walk the robot** appears alongside **Fly a butterfly** in ordinary Meadow.
-Alternatively, land on the square teal-and-gold rock near x=7,z=9.1 to wake
-EMU as an Easter egg. `?emu-demo=1` starts already perched on that rock.
+**Walk the robot (12.5 MB download)** appears alongside **Fly a butterfly**
+in ordinary Meadow. The **butterfly-only experience downloads no robot physics,
+neural network, or WebAssembly files**. The special teal-and-gold rock near
+x=7,z=9.1 is now half its original size. Land there to see a separately
+labelled **Wake EMU (12.5 MB download)** option; landing alone does not download
+anything. `?emu-demo=1` starts already perched on that rock.
+
+Clicking either Walk or Wake shows a byte-accurate progress bar with an MB count
+and percentage for the champion model, browser runtime and 10.9 MB MuJoCo WASM
+binary. **Only a deliberate click starts the download.** After those bytes
+arrive, the UI says that the engine is starting; it does not fake progress
+during physics initialization. The downloaded WASM bytes are reused directly
+for engine initialization instead of silently downloading the binary twice.
+A second ride in the same tab reuses the loaded engine without another download.
 
 ## What actually runs
 
@@ -13,8 +24,9 @@ EMU as an Easter egg. `?emu-demo=1` starts already perched on that rock.
   *robot.xml*, actuated servos, passive shin springs, foot contacts and
   gravity. Per-frame network actions are **actually passed to MuJoCo**.
 - **Google DeepMind `@mujoco/mujoco@3.17.0` compiled into WASM**. The
-  physics engine and its 10.9MB binary are fetched only on first robot ride;
-  this is an explicit tradeoff for accurate dynamics rather than toy physics.
+  robot-specific first-ride download is **12.5 MB total**: 0.89 MB neural
+  actor, 0.71 MB JavaScript runtime, and 10.93 MB WASM. No heavy robot assets
+  are fetched for ordinary Meadow visitors or butterfly-only flight.
 - Real physics terrain: a **257×257 collision heightfield**, covering 31m
   edge-to-edge, sampled from Meadow's existing procedural `height(x,z)`.
   The rendered robot pose, leg link endpoints, butterfly perch and navigation
