@@ -141,6 +141,8 @@ class Creature {
  }
 }
 let critter=null;
+// Read-only wildlife coordinate for optional EMU's lizard-follow navigator.
+world.getLizard=()=>critter?{x:critter.x,z:critter.y,heading:critter.absAngle}:null;
 function setupLizard(){
  const start=surfaceGoal(W*.73,H*.79)||{x:3.5,y:9};
  critter=new Creature(start.x,start.y,-2.4,.024,.005,.48,.38,.105,.012,.65,.17);

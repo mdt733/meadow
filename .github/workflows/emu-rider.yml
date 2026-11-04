@@ -1,0 +1,40 @@
+name: EMU butterfly rider checks
+
+on:
+  push:
+    branches: [main, feature/emu-butterfly-rider]
+  pull_request:
+    paths:
+      - 'emu/**'
+      - 'meadow.html'
+      - 'ground-lizard.js'
+      - 'tests/**'
+
+jobs:
+  browser-code:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check emu/emu.js
+      - run: node --check emu/policy.js
+      - run: node --check ground-lizard.js
+      - run: node tests/check-inline.mjs
+      - run: node --test tests/emu-rider.test.mjs
+      - name: Install headless browser
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Exercise real Meadow WebGL and EMU modes
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/meadow-http.log 2>&1 &
+          node tests/browser-smoke.mjs
+      - name: Save rider screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emu-rider-browser-smoke
+          path: artifacts/
+          if-no-files-found: ignore

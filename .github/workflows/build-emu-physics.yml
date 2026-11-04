@@ -1,0 +1,47 @@
+name: Build and commit real EMU MuJoCo browser runtime
+on:
+  push:
+    branches: [feature/emu-butterfly-rider]
+    paths:
+      - 'emu/physics/vendor/**'
+      - 'emu/physics/src/**'
+      - 'emu/physics/package.json'
+      - 'emu/physics/vite.config.js'
+      - '.github/workflows/build-emu-physics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build pinned Google DeepMind MuJoCo 3.17.0 WASM
+        working-directory: emu/physics
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Ensure physics bundle and actual WASM binary exist
+        run: |
+          test -s emu/physics/dist/emu-physics.js
+          find emu/physics/dist -iname '*.wasm' -type f -size +1M | grep -q wasm
+          du -h emu/physics/dist/emu-physics.js
+          find emu/physics/dist -iname '*.wasm' -type f -exec du -h {} \;
+      - name: Commit web-playable compiled engine on feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f emu/physics/dist/
+          if git diff --cached --quiet; then
+            echo "Runtime already up-to-date."
+          else
+            git commit -m "Build browser MuJoCo WASM physics runtime for Meadow"
+            git push origin HEAD:refs/heads/feature/emu-butterfly-rider
+          fi
