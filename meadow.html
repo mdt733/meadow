@@ -74,7 +74,7 @@ html.tilt-steering .fly-joystick{display:none}
 </style><script>if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embedded')</script></head><body>
 <div id="pilotEntrances" role="group" aria-label="Explore the meadow">
   <button id="flyStart" title="Pilot a butterfly in the meadow" type="button">🦋 Fly a butterfly</button>
-  <button id="emuStart" title="Optional: download 12.0 MB of neural weights and real MuJoCo physics to walk EMU" type="button">🤖 Walk the robot <span class="emu-download-note">(12.0 MB download)</span></button>
+  <button id="emuStart" title="Optional: download 12.0 MB of neural weights and real MuJoCo physics to walk EMU" type="button">🤖 Walk the robot <span class="emu-download-note">(≈12 MB download)</span></button>
 </div>
 <div id="flyHud" hidden aria-label="Butterfly flight simulator">
   <div class="fly-top"><strong id="flyHudTitle">Butterfly flight</strong><div class="fly-metrics"><span>Speed <b id="flySpeed">0.0</b> m/s</span><span>Height <b id="flyAltitude">0.0</b> m</span><span>Climb <b id="flyVertical">+0.0</b> m/s</span><span><b id="flyMode" class="fly-mode">GLIDING</b></span><span>Nectar <b id="flyNectar">0</b></span><span>Stamina <span class="fly-stamina"><span id="flyEnergy"></span></span></span></div><div id="flyAlert" class="fly-alert" aria-live="polite"></div><div id="flyRace" class="fly-race" aria-live="off"></div></div>
@@ -93,7 +93,7 @@ html.tilt-steering .fly-joystick{display:none}
   <div class="fly-touch" aria-label="Touch flight controls"><div id="flyJoystick" class="fly-joystick" role="group" aria-label="Flight joystick: up to climb, down to dive, left and right to bank"><div id="flyStick" class="fly-stick" aria-hidden="true"></div></div><button type="button" class="fly-flap" data-flight-key="space">FLAP 🦋</button></div>
 </div>
 <button id="emuWake" type="button" hidden>✧ Wake the little robot</button>
-<div id="emuLoader" hidden role="status" aria-live="polite"><strong>Downloading EMU…</strong><progress id="emuProgress" max="1" value="0" aria-label="Optional robot download progress"></progress><div id="emuDownloadDetail">0.0 / 12.0 MB · 0%</div><div id="emuLoadStatus">Preparing the optional download…</div></div>
+<div id="emuLoader" hidden role="status" aria-live="polite"><strong>Downloading EMU…</strong><progress id="emuProgress" max="1" value="0" aria-label="Optional robot download progress"></progress><div id="emuDownloadDetail">0.0 / ≈12 MB · 0%</div><div id="emuLoadStatus">Preparing the optional download…</div></div>
 <canvas id="scene" tabindex="0" aria-label="A golden hour meadow with an apple tree, miniature fairy door and gently swaying swing and wandering butterflies. Drag to orbit, scroll to zoom."></canvas><div id="mist"></div>
 <h1>Go <em>outside.</em></h1>
 <footer><small>nothing to catch up on.</small><div class="buttons"><button class="round" id="pause" title="Pause animation" aria-label="Pause animation" aria-pressed="false"><svg id="pauseIcon" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button></div></footer>
@@ -1331,7 +1331,7 @@ function drawRaces(){
 
 function showEmuRockPrompt(site){
  $('emuWake').hidden=!Boolean(flight.active&&flight.landed&&site?.emuWake&&!emuLoading);
- $('emuWake').textContent=emu?'✧ Ride EMU again':'✧ Wake EMU (12.0 MB download)';
+ $('emuWake').textContent=emu?'✧ Ride EMU again':'✧ Wake EMU (≈12 MB download)';
 }
 function mountEmu(){
  if(!emu||!flight.active)return;
@@ -1366,7 +1366,7 @@ async function startRobotRide(){
  if(emu){mountEmu();return;}
  emuLoading=true;$('emuWake').hidden=true;$('emuLoader').hidden=false;
  $('emuProgress').value=0;
- $('emuDownloadDetail').textContent='0.0 / 12.0 MB · 0%';
+ $('emuDownloadDetail').textContent='0.0 / ≈12 MB · 0%';
  $('emuLoadStatus').textContent='Preparing the optional download…';
  try{
   const module=await import('./emu/emu.js');
