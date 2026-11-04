@@ -62,11 +62,18 @@ try{
  await page.mouse.up();
  assert.equal(await page.evaluate(()=>window.__cameraSaves.length),1,
   'completed landscape drag should persist exactly once');
- await page.mouse.wheel(0,130);
- await page.mouse.wheel(0,130);
- await page.waitForTimeout(350);
+ // Dispatch one trackpad wheel burst in the same task. Two real Playwright
+ // mouse.wheel awaits can be hundreds of ms apart on software-rendered CI.
+ await page.evaluate(()=>{
+  const canvas=document.getElementById('scene');
+  for(let i=0;i<2;i++)canvas.dispatchEvent(new WheelEvent('wheel',{
+   deltaY:130,bubbles:true,cancelable:true
+  }));
+ });
+ await page.waitForFunction(()=>window.__cameraSaves.length>=2,null,{timeout:3000});
+ await page.waitForTimeout(230);
  assert.equal(await page.evaluate(()=>window.__cameraSaves.length),2,
-  'bursty scroll zoom should persist once after the gesture finishes');
+  'one burst of scroll input should persist once after the gesture finishes');
 
  await page.screenshot({path:'artifacts/emu-walk-button.png'});
  // Flying the butterfly should be genuinely free of all robot downloads.
