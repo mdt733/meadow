@@ -27,6 +27,15 @@ test('difficulty choice gates are lower and farther away, but still in rich terr
 
 test('full figure eight crosses near the tree first low then above the crown',()=>{
  for(let i=0;i<3;i++){
+  const lap=Array.from({length:721},(_,k)=>raceFigurePoint(i,EIGHT.entry+k*Math.PI*2/720,height));
+  const x=lap.map(p=>p[0]),span=Math.max(...x)-Math.min(...x);
+  assert.ok(span>58.5&&span<60.5,
+   'outer lobes must span roughly 59m — double the original 29.4m width');
+  assert.ok(Math.max(...x)>32&&Math.min(...x)<-25,
+   'both far-side outer curves must reach the widened meadow');
+  const seam=lap[0],distanceToArch=Math.hypot(seam[0]-arch[0],seam[2]-arch[2]);
+  assert.ok(distanceToArch<10,
+   'the figure-eight entry and exit must stay near the original stone arch');
   const low=raceFigurePoint(i,0,height),high=raceFigurePoint(i,Math.PI,height);
   assert.ok(Math.hypot(low[0],low[2])<4.1,'first crossing near trunk');
   assert.ok(Math.abs(low[0]-high[0])<1e-8&&Math.abs(low[2]-high[2])<1e-8,
@@ -59,6 +68,13 @@ test('each difficulty is one continuous traversable course that closes through o
   const final=gates.at(-1);
   assert.ok(norm(final.pos.map((v,k)=>v-arch[k]))<1e-7,'finish in real stone arch');
   assert.ok(Math.abs(norm(final.normal)-1)<1e-6,'normal remains unit length');
+  const penultimate=gates.at(-2),approach=final.pos.map((v,k)=>v-penultimate.pos[k]);
+  const horizontal=Math.hypot(approach[0],approach[2]);
+  const alongArch=(approach[0]*dir[0]+approach[2]*dir[2])/horizontal;
+  assert.ok(alongArch>.85,
+   'the final rings must approach the arch forwards, not from its far side');
+  assert.ok(horizontal>3&&horizontal<8,
+   'the last approach must be a manageable straight run into the arch');
   for(let j=0;j<gates.length;j++){
    const a=gates[j];
    assert.ok(a.pos.every(Number.isFinite)&&a.normal.every(Number.isFinite));
