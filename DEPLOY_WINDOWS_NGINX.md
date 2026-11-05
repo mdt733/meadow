@@ -70,7 +70,7 @@ or `hangar/` at the web root.
 ```powershell
 $ErrorActionPreference = 'Stop'
 $branch = 'feature/robot-arch-figure-eight-races'
-$build = 'robot-arch-eight-20261105'
+$build = 'wide-eight-20261105'
 $base = "https://raw.githubusercontent.com/mdt733/meadow/$branch"
 $root = 'C:\nginx\html\meadow-preview'
 $stage = Join-Path $env:TEMP ('meadow-pr4-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -142,7 +142,7 @@ Use these **standalone preview links** rather than your PHP homepage:
 
 The first fly-through should display **You found EMU!**; Red should say
 **Red figure eight**. In the browser developer console,
-`window.__meadowBuild` must print `robot-arch-eight-20261105`. If it is
+`window.__meadowBuild` must print `wide-eight-20261105`. If it is
 `undefined`, you are still loading the old scene. The build stamp and
 versioned module/CSS URLs prevent a cached older JS module from silently
 surviving a new HTML fetch. The version query itself is part of the
