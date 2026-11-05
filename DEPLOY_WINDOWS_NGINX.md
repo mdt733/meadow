@@ -70,7 +70,7 @@ or `hangar/` at the web root.
 ```powershell
 $ErrorActionPreference = 'Stop'
 $branch = 'feature/robot-arch-figure-eight-races'
-$build = 'single-arch-eight-20261105'
+$build = 'smooth-rings-20261105'
 $base = "https://raw.githubusercontent.com/mdt733/meadow/$branch"
 $root = 'C:\nginx\html\meadow-preview'
 $stage = Join-Path $env:TEMP ('meadow-pr4-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -108,6 +108,7 @@ if (-not $scene.Contains("window.__meadowBuild='$build'") -or
     -not $scene.Contains('archWalk') -or
     -not $scene.Contains('makeFigureEightCourse') -or
     -not $course.Contains('export function raceFigurePoint') -or
+    -not $course.Contains('function roundedConnection(') -or
     -not $course.Contains('spanX:29.4') -or
     -not $physics.Contains('export const RACE_FLY')) {
   throw 'Missing single arch menu, figure eight or race physics: refusing install.'
@@ -144,7 +145,7 @@ Use these **standalone preview links** rather than your PHP homepage:
 - **Normal Meadow:** `https://mdt733.ddns.net/meadow-preview/meadow.html`
 
 Flying through the original arch should freeze the scene and show **Easy, Medium, Hard, Walk the robot**. Hard race demo should say **Hard figure eight**. In the browser developer console,
-`window.__meadowBuild` must print `single-arch-eight-20261105`. If it is
+`window.__meadowBuild` must print `smooth-rings-20261105`. If it is
 `undefined`, you are still loading the old scene. The build stamp and
 versioned module/CSS URLs prevent a cached older JS module from silently
 surviving a new HTML fetch. The version query itself is part of the
