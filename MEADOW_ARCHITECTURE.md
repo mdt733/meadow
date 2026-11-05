@@ -14,7 +14,7 @@ meadow.html                  small markup/HUD shell; embeds & responsive page
 assets/meadow.css            styles, media queries, HUD layout
 assets/meadow.js             one WebGL renderer, world generation and gameplay
 assets/flight-physics.js     pure butterfly forces, relaxed and stronger racing profiles
-assets/race-course.js       continuous lower/upper figure-eight paths and choice gates
+assets/race-course.js       continuous low/high figure-eight paths started from the original stone arch
 ground-lizard.js             articulated IK, ground navigation, hunting
 skybox.png                   local, full-quality sky texture
 emu/emu.js                   lazy downloaded actor/runtime/WASM with real bytes
@@ -41,7 +41,7 @@ EMU stays strictly opt-in.
 | Aerial race | `assets/race-course.js` + scene | Three continuous 3-D figure-eight routes crossing the apple tree twice at different heights; physical gate sweeps, boosts and browser-local bests |
 | Pilot input / chase camera | `assets/meadow.js` | Keyboard/touch/tilt and drag/pinch/scroll view without steering the actor |
 | Lizard | `ground-lizard.js` | Head-led locomotion/limb IK; world-space stroked mesh and real butterfly pursuit |
-| EMU | `emu/` + the static robot arch in `assets/meadow.js` | A readable 3-D statue and fly-through pause need no download; an explicit Walk click runs the actual 260M neural actor + real MuJoCo joints and contacts |
+| EMU | `emu/` + the one arch menu in `assets/meadow.js` | The original race arch pauses world time and offers Easy, Medium, Hard or Walk; only an explicit Walk click loads the real 260M neural actor and MuJoCo physics |
 | UI / saved preferences | `meadow.html`, CSS and scene | Accessible controls; retains existing localStorage keys for returning visitors |
 
 ### Deliberately retained relationships
@@ -76,19 +76,20 @@ EMU stays strictly opt-in.
   flight coefficients into one small testable module. The ordinary profile is
   unchanged; racing uses a stronger wingbeat **through the same airspeed,
   lift, drag, gravity and stamina equations**, with no flight shortcuts.
-- Placed the second EMU arch 90° around the tree, with a static mini-EMU
-  sculpture and a genuine bidirectional swept trigger. No precision landing.
-- The green/orange/red race selectors are lower, farther out and better
-  separated; all courses are the same 3-D figure eight with more challenging
-  noise and higher above-tree crossings for harder difficulties.
+- Removed the second EMU arch, sculpture, awkward marked rock, and three
+  separate colour-selection gates. The original race arch alone uses the
+  swept-plane crossing to freeze the whole Meadow time and present four choices.
+- All three difficulty routes start directly ahead of the crossing butterfly
+  (both entry directions), complete the wide ~59m figure eight with low and
+  high tree passes, then approach the original arch along a final straight.
 - Kept the existing functional procedural meshes and full-quality assets;
   there is no evidence that removing them would improve maintainability.
 
 ## Regression and deployment contract
 
 The GitHub browser workflow now also checks a ten-second physically powered
-  climb with meaningful airspeed, a real fly-through of the EMU arch from
-  both directions, the no-download pause, and route height/grade constraints.
+  climb with meaningful airspeed, a real fly-through of the original arch from
+  both directions, the four-button no-download pause, and route height/grade constraints.
 
 The GitHub browser workflow exercises the ordinary website **without** a
 robot download, butterfly flight and landing, actual mobile pinch controls,
