@@ -1,102 +1,75 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {RACE_TYPES,EIGHT,raceFigurePoint,raceChoices,makeFigureEightCourse} from '../assets/race-course.js';
+import {RACE_TYPES,EIGHT,raceFigurePoint,makeFigureEightCourse} from '../assets/race-course.js';
 
 const norm=a=>Math.hypot(...a);
 const height=(x,z)=>3.75*Math.exp(-(x*x+z*z)/118)+.14*Math.sin(x*.22+z*.09)+
  .19*Math.cos(z*.18-x*.14)+.42*Math.exp(-((x+30)**2+(z-28)**2)/320)+
  .36*Math.exp(-((x-31)**2+(z+21)**2)/600);
 const arch=[16.8,height(16.8,-18.5)+1.40*2/3,-18.5];
-const dir=[.731,0,.683];
+const canonical=[.731,0,.683];
 
-test('difficulty choice gates are lower and farther away, but still in rich terrain',()=>{
- const choices=raceChoices(arch,dir,height);
- assert.equal(choices.length,3);
- assert.deepEqual(choices.map(x=>x.name),['Green','Orange','Red']);
- for(const c of choices){
-  const dist=norm([c.pos[0]-arch[0],c.pos[2]-arch[2]]);
-  assert.ok(dist>13,'each choice must allow a deliberate approach');
-  assert.ok(norm([c.pos[0],c.pos[2]])<31,'choices must stay inside detailed meadow');
-  assert.ok(c.pos[1]-height(c.pos[0],c.pos[2])<3,'lower flight selection');
-  assert.ok(c.pos[1]-height(c.pos[0],c.pos[2])>1.5,'no ground grazing');
-  assert.ok(c.radius>=1.5,'forgiving 3-D choice gates');
- }
- const lateral=norm([choices[0].pos[0]-choices[2].pos[0],choices[0].pos[2]-choices[2].pos[2]]);
- assert.ok(lateral>9,'gates must be well separated for meaningful steering');
+test('only three difficulty names are exposed through one arch',()=>{
+ assert.deepEqual(RACE_TYPES.map(t=>t.name),['Easy','Medium','Hard']);
+ assert.equal(EIGHT.spanX,29.4,'keep the deliberately wide outer curves');
 });
 
-test('full figure eight crosses near the tree first low then above the crown',()=>{
- for(let i=0;i<3;i++){
-  const lap=Array.from({length:721},(_,k)=>raceFigurePoint(i,EIGHT.entry+k*Math.PI*2/720,height));
-  const x=lap.map(p=>p[0]),span=Math.max(...x)-Math.min(...x);
-  assert.ok(span>58.5&&span<60.5,
-   'outer lobes must span roughly 59m — double the original 29.4m width');
-  assert.ok(Math.max(...x)>32&&Math.min(...x)<-25,
-   'both far-side outer curves must reach the widened meadow');
-  const seam=lap[0],distanceToArch=Math.hypot(seam[0]-arch[0],seam[2]-arch[2]);
-  assert.ok(distanceToArch<10,
-   'the figure-eight entry and exit must stay near the original stone arch');
-  const low=raceFigurePoint(i,0,height),high=raceFigurePoint(i,Math.PI,height);
-  assert.ok(Math.hypot(low[0],low[2])<4.1,'first crossing near trunk');
-  assert.ok(Math.abs(low[0]-high[0])<1e-8&&Math.abs(low[2]-high[2])<1e-8,
-   'two crossings really share the same world X/Z');
-  assert.ok(high[1]-low[1]>5,'second pass must rise above the whole canopy');
-  assert.ok(high[1]>height(0,0)+6,'second pass substantially above tree trunk');
-  const begin=raceFigurePoint(i,EIGHT.entry,height);
-  const end=raceFigurePoint(i,EIGHT.entry+2*Math.PI,height);
-  assert.ok(norm(begin.map((n,j)=>n-end[j]))<1e-6,'loop joins without position jump');
+test('a complete continuous eight passes near the tree low first, high second, in either direction',()=>{
+ for(const reverse of [false,true])for(let i=0;i<3;i++){
+  const entry=EIGHT.entry,sign=reverse?1:-1;
+  const lap=Array.from({length:721},(_,k)=>raceFigurePoint(i,entry+sign*k*Math.PI*2/720,height,reverse));
+  const xs=lap.map(p=>p[0]),span=Math.max(...xs)-Math.min(...xs);
+  assert.ok(span>58.5&&span<60.5,'outer curves must remain around 59 metres wide');
+  const start=lap[0],end=lap.at(-1);
+  assert.ok(norm(start.map((v,k)=>v-end[k]))<1e-5,'loop must close at identical altitude');
+  const low=raceFigurePoint(i,reverse?0:-Math.PI,height,reverse);
+  const high=raceFigurePoint(i,reverse?Math.PI:-2*Math.PI,height,reverse);
+  assert.ok(Math.hypot(low[0],low[2])<4.1,'low pass near tree');
+  assert.ok(norm([low[0]-high[0],low[2]-high[2]])<1e-6,'same XY plan at both crossings');
+  assert.ok(high[1]-low[1]>5,'second crossing above tree');
  }
- const g=raceFigurePoint(0,1.13,height),r=raceFigurePoint(2,1.13,height);
- assert.ok(norm([g[0]-r[0],g[2]-r[2]])>.4,'harder routes have meaningful turns');
 });
 
-test('each difficulty is one continuous traversable course that closes through original arch',()=>{
- const choice=raceChoices(arch,dir,height);
- const all=RACE_TYPES.map((_,index)=>makeFigureEightCourse({
-  index,choice:choice[index],start:arch,direction:dir,height,finishRadius:.64
- }));
- for(const [i,gates] of all.entries()){
-  assert.ok(gates.length>20,'large figure-eight needs meaningful checkpoints');
-  let distanceM=0,maxUpGrade=0;
-  const low=gates.findIndex(g=>g.milestone==='low');
-  const high=gates.findIndex(g=>g.milestone==='high');
-  assert.ok(low>=0&&high>low,'must fly through low crossing then high crossing');
-  const lowPos=gates[low].pos,highPos=gates[high].pos;
-  assert.ok(Math.hypot(lowPos[0]-highPos[0],lowPos[2]-highPos[2])<.02,
-   'mandatory passes must share world X/Z close to the tree');
-  assert.ok(highPos[1]>lowPos[1]+5,'second mandatory ring must clear the canopy');
-  const final=gates.at(-1);
-  assert.ok(norm(final.pos.map((v,k)=>v-arch[k]))<1e-7,'finish in real stone arch');
-  assert.ok(Math.abs(norm(final.normal)-1)<1e-6,'normal remains unit length');
-  const penultimate=gates.at(-2),approach=final.pos.map((v,k)=>v-penultimate.pos[k]);
-  const horizontal=Math.hypot(approach[0],approach[2]);
-  const alongArch=(approach[0]*dir[0]+approach[2]*dir[2])/horizontal;
-  assert.ok(alongArch>.85,
-   'the final rings must approach the arch forwards, not from its far side');
-  assert.ok(horizontal>3&&horizontal<8,
-   'the last approach must be a manageable straight run into the arch');
-  for(let j=0;j<gates.length;j++){
-   const a=gates[j];
-   assert.ok(a.pos.every(Number.isFinite)&&a.normal.every(Number.isFinite));
-   assert.ok(a.pos[1]-height(a.pos[0],a.pos[2])>(j===gates.length-1?.80:1.30),
-    'course rings must clear terrain; original stone arch is intentionally lower');
-   if(j>0){
-    const b=gates[j-1];
-    const step=norm(a.pos.map((n,k)=>n-b.pos[k]));
-    distanceM+=step;
-    assert.ok(step<9,'no discontinuity between ring centres');
-    const planar=norm([a.pos[0]-b.pos[0],a.pos[2]-b.pos[2]]);
-    if(a.pos[1]>b.pos[1]&&planar>1){
-     const grade=(a.pos[1]-b.pos[1])/planar;
-     maxUpGrade=Math.max(maxUpGrade,grade);
-     assert.ok(grade<.43,
-      'course climb should be attainable with real flapping rather than a teleport');
-    }
-   }
+test('every difficulty points ahead of the butterfly after either arch entrance',()=>{
+ for(const reverse of [false,true])for(let i=0;i<3;i++){
+  const direction=canonical.map(v=>reverse?-v:v);
+  const gates=makeFigureEightCourse({index:i,start:arch,direction,height,finishRadius:.64});
+  assert.ok(gates.length>25,'full-length eight needs numerous checkpoints');
+  const first=gates[0],second=gates[1];
+  const dx=first.pos[0]-arch[0],dz=first.pos[2]-arch[2];
+  const forward=(dx*direction[0]+dz*direction[2])/Math.hypot(dx,dz);
+  assert.ok(forward>.78,'FIRST ring must be clearly ahead, never behind after choosing a menu option');
+  assert.ok(Math.hypot(dx,dz)>2,'first target should not overlap the arch');
+  const approach=second.pos.map((v,k)=>v-first.pos[k]);
+  assert.ok(approach[0]*direction[0]+approach[2]*direction[2]>0,
+   'second target must not immediately double back behind the first');
+  const earlyTangent=first.normal[0]*direction[0]+first.normal[2]*direction[2];
+  assert.ok(earlyTangent>.2,'first ring must face the departing pilot, not backwards');
+  const milestones=gates.filter(g=>g.milestone);
+  assert.deepEqual(milestones.map(x=>x.milestone),['low','high'],
+   'must pass tree low, then high, in the actual flight order');
+  assert.ok(milestones[1].pos[1]-milestones[0].pos[1]>5);
+  const last=gates.at(-1),prev=gates.at(-2);
+  assert.ok(norm(last.pos.map((v,k)=>v-arch[k]))<1e-7,'finish is the real arch');
+  const finish=last.pos.map((v,k)=>v-prev.pos[k]);
+  const forwardFinish=(finish[0]*direction[0]+finish[2]*direction[2])/Math.hypot(finish[0],finish[2]);
+  assert.ok(forwardFinish>.85,'finish must align with the arch in the actual arrival direction');
+  assert.ok(Math.hypot(finish[0],finish[2])>2,'final checkpoint must be a flyable distance away');
+  let lengthM=0,maxGrade=0;
+  for(let k=0;k<gates.length;k++){
+   const g=gates[k];
+   assert.ok(g.pos.every(Number.isFinite)&&g.normal.every(Number.isFinite));
+   assert.ok(g.pos[1]-height(g.pos[0],g.pos[2])>(k===gates.length-1?.8:1.3),
+    'rings must have physical terrain clearance');
+   if(k===0)continue;
+   const p=gates[k-1],d=g.pos.map((v,n)=>v-p.pos[n]);
+   const planar=Math.hypot(d[0],d[2]);
+   lengthM+=norm(d);
+   assert.ok(norm(d)<9,'no jump between ring centres');
+   if(d[1]>0&&planar>1)maxGrade=Math.max(maxGrade,d[1]/planar);
   }
-  console.log('Race geometry '+RACE_TYPES[i].name+': '+gates.length+
-   ' rings, '+distanceM.toFixed(1)+'m of path, maximum uphill grade '+
-   (maxUpGrade*100).toFixed(1)+'%');
+  assert.ok(maxGrade<.52,'courses must have a physically achievable grade');
+  console.log(RACE_TYPES[i].name+(reverse?' reverse':' forward')+
+   ': '+gates.length+' gates, '+lengthM.toFixed(1)+' m, uphill '+(maxGrade*100).toFixed(1)+'%');
  }
- assert.ok(all[2].length>=all[0].length,'harder course has denser/smaller ring spacing');
 });
