@@ -134,16 +134,16 @@ foreach ($rel in $files) {
 }
 Write-Host "Preview build $build installed from $branch (not main)."
 Write-Host 'Open https://mdt733.ddns.net/meadow-preview/meadow.html?arch-flight-demo=forward'
-Write-Host 'Or https://mdt733.ddns.net/meadow-preview/meadow.html?race-demo=red'
+Write-Host 'Or https://mdt733.ddns.net/meadow-preview/meadow.html?race-demo=hard'
 ```
 
 Use these **standalone preview links** rather than your PHP homepage:
 
 - **Four-option arch:** `https://mdt733.ddns.net/meadow-preview/meadow.html?arch-flight-demo=forward`
-- **Red figure eight:** `https://mdt733.ddns.net/meadow-preview/meadow.html?race-demo=red`
+- **Hard figure eight:** `https://mdt733.ddns.net/meadow-preview/meadow.html?race-demo=hard`
 - **Normal Meadow:** `https://mdt733.ddns.net/meadow-preview/meadow.html`
 
-Flying through the original arch should freeze the scene and show **Easy, Medium, Hard, Walk the robot**. Red race demo (legacy alias) should say **Hard figure eight**. In the browser developer console,
+Flying through the original arch should freeze the scene and show **Easy, Medium, Hard, Walk the robot**. Hard race demo should say **Hard figure eight**. In the browser developer console,
 `window.__meadowBuild` must print `single-arch-eight-20261105`. If it is
 `undefined`, you are still loading the old scene. The build stamp and
 versioned module/CSS URLs prevent a cached older JS module from silently
@@ -161,7 +161,7 @@ python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
 Open `http://localhost:8000/meadow.html?arch-flight-demo=forward`
-or `http://localhost:8000/meadow.html?race-demo=red`. For an existing
+or `http://localhost:8000/meadow.html?race-demo=hard`. For an existing
 checkout, use `git fetch origin` and explicitly switch to the feature
 branch; `git pull` while on `main` **will not** bring the draft in.
 
