@@ -25,3 +25,10 @@ export const FLY={g:9.81, drag0:.055,dragV2:.065,induced:.032, liftV2:2.30,
  // Shared wing-force coefficients: these preserve the original player model.
  stallStart:.70,stallLoss:1.15,minAttach:.62,minCl:.06,maxCl:1.75,
  flapBase:.70,flapPulse:.30,positiveFlap:true,bankDrag:.055,bankSpeed:true,stallDrag:.55};
+
+// Race flight uses the SAME physical lift/drag and gravity integration,
+// with more powerful wingbeats and enough stamina for a sustained canopy
+// climb. Ordinary relaxed Meadow flight retains the original FLY tuning.
+export const RACE_FLY=Object.freeze({...FLY,
+ flapImpulse:1.14,flapLift:4.45,flapCost:.013,regen:.09
+});

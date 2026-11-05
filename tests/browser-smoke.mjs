@@ -43,7 +43,7 @@ try{
  await page.waitForFunction(()=>window.__meadowDiagnostics&&window.__lizardDiagnostics);
  const resources=await page.evaluate(()=>performance.getEntriesByType('resource').map(x=>x.name));
  for(const asset of ['/assets/meadow.css','/assets/meadow.js','/ground-lizard.js'])
-  assert.ok(resources.some(url=>url.endsWith(asset)),asset+' must load on a blank site');
+  assert.ok(resources.some(url=>new URL(url).pathname.endsWith(asset)),asset+' must load on a blank site');
 
  // Camera drag persists only after mouse release, not on every move.
  await page.evaluate(()=>{
@@ -134,6 +134,80 @@ try{
  assert.equal(robotRequests.length,0,'looking around may not trigger robot downloads');
  await page.locator('#flyExit').click();
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===false);
+
+ // Before loading MuJoCo, verify the same playable butterfly can actually
+ // climb under repeated flaps in the untouched open-meadow physics model.
+ await page.goto('http://127.0.0.1:8765/meadow.html?climb-demo=1',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ // Disable RAF stepping: manual __meadowStep must be the ONLY integrator,
+ // otherwise software WebGL frame timing contaminates the climb measurement.
+ await page.evaluate(()=>document.getElementById('pause').click());
+ const climbStart=await page.evaluate(()=>window.__meadowFlight.state());
+ await page.keyboard.down('s');
+ await page.keyboard.down('Space');
+ await page.evaluate(()=>window.__meadowStep(10));
+ await page.keyboard.up('Space');
+ await page.keyboard.up('s');
+ const climbEnd=await page.evaluate(()=>window.__meadowFlight.state());
+ const climbGain=climbEnd.pos[1]-climbStart.pos[1];
+ console.log('Butterfly ten-second continuous powered climb:',JSON.stringify({
+  gainM:climbGain,verticalMps:climbGain/10,flaps:climbEnd.flaps-climbStart.flaps,
+  speedMps:climbEnd.speed,energy:climbEnd.energy,stalled:climbEnd.stalled,
+  land:climbEnd.landed
+ }));
+ assert.ok(climbGain>4.5,'butterfly must have physical powered climb rate for upper tree pass');
+ assert.equal(climbEnd.landed,false,'continuous ascent must not finish on the ground');
+ assert.equal(robotRequests.length,0,'butterfly climb trial must not fetch optional EMU assets');
+
+ // Maximum pull-up is intentionally slow; a competent pilot should also be
+ // able to use smaller pitch corrections to ascend *with* forward airspeed.
+ await page.goto('http://127.0.0.1:8765/meadow.html?climb-demo=1',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>document.getElementById('pause').click());
+ await page.keyboard.down('Space');
+ const cruise=await page.evaluate(()=>{
+  const start=window.__meadowFlight.state();
+  for(let i=0;i<20;i++){
+   window.dispatchEvent(new KeyboardEvent('keydown',{key:'s',code:'KeyS',bubbles:true}));
+   window.__meadowStep(.05);
+   window.dispatchEvent(new KeyboardEvent('keyup',{key:'s',code:'KeyS',bubbles:true}));
+   window.__meadowStep(.45);
+  }
+  const end=window.__meadowFlight.state();
+  return {gainM:end.pos[1]-start.pos[1],speedMps:end.speed,energy:end.energy,
+    flaps:end.flaps-start.flaps,landed:end.landed,stalled:end.stalled};
+ });
+ await page.keyboard.up('Space');
+ console.log('Butterfly ten-second pitched cruising climb:',JSON.stringify(cruise));
+ assert.ok(cruise.gainM>7,'race flight must climb enough for red upper-tree pass');
+ assert.ok(cruise.speedMps>1.5,'climb must retain steering speed for the next race ring');
+ assert.equal(cruise.stalled,false,'climb must not enter the wing stall state');
+ assert.equal(cruise.landed,false);
+
+ // Exercise the actual in-browser arch -> four-option menu -> course selection
+ // pipeline, not merely the pure Node geometry generator.
+ await page.goto('http://127.0.0.1:8765/meadow.html?race-demo=red',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().race.mode==='running');
+ const redStart=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(redStart.race.course,2,'red entry should select the hardest circuit');
+ assert.ok(redStart.race.total>30,'red should produce a full long figure eight');
+ assert.equal(redStart.race.courseGates.length,redStart.race.total);
+ const treeMarkers=redStart.race.courseGates.filter(g=>g.milestone);
+ assert.deepEqual(treeMarkers.map(g=>g.milestone),['low','high'],
+  'red race must contain two mandatory crossing rings at the tree');
+ assert.ok(treeMarkers[1].pos[1]>treeMarkers[0].pos[1]+5);
+ const liveFirst=redStart.race.courseGates[0],liveLast=redStart.race.courseGates.at(-1);
+ assert.ok(liveFirst.pos.every(Number.isFinite));
+ assert.ok(liveLast.pos.every(Number.isFinite));
+ assert.equal(robotRequests.length,0,'red race does not require neural robot downloads');
+ await page.evaluate(()=>window.__meadowStep(.25));
+ const redAfter=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.ok(redAfter.pos.every(Number.isFinite)&&redAfter.speed>0,
+  'physically flown red figure eight must remain numerically sound');
+ await page.screenshot({path:'artifacts/red-figure-eight-race.png'});
+
+ await page.goto('http://127.0.0.1:8765/meadow.html',{waitUntil:'domcontentloaded'});
+ await page.locator('#emuStart').waitFor({state:'visible',timeout:30000});
  // Observe actual progress DOM mutations as network chunks arrive.
  await page.evaluate(()=>{
   window.__emuProgressSamples=[];
@@ -163,6 +237,12 @@ try{
   throw error;
  }
  await page.waitForFunction(()=>window.__meadowEmu?.state().pose?.frames>5,null,{timeout:15000});
+ // The browser's variable SwiftShader RAF must not race our deterministic
+ // 50Hz physical stepping during direction and endurance measurements.
+ await page.evaluate(()=>{
+  const pause=document.getElementById('pause');
+  if(pause.getAttribute('aria-pressed')!=='true')pause.click();
+ });
  let state=await page.evaluate(()=>window.__meadowEmu.state());
  assert.equal(requests.length,1,'Actor is downloaded exactly once on opt in');
  assert.equal(robotRequests.filter(x=>x.includes('.wasm')).length,1,
@@ -274,7 +354,7 @@ try{
  await page.keyboard.down('a');
  const leftTurn=await page.evaluate(()=>{
   const before=window.__meadowEmu.state();
-  window.__meadowStep(1.0);
+  window.__meadowStep(2.0);
   return {before,after:window.__meadowEmu.state()};
  });
  await page.keyboard.up('a');
@@ -339,33 +419,84 @@ try{
  await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
  assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly flight');
 
- // The old discoverable-rock path still works, but now looks like a cube.
- await page.goto('http://127.0.0.1:8765/meadow.html?emu-demo=1',{waitUntil:'domcontentloaded'});
- await page.locator('#emuWake').waitFor({state:'visible',timeout:30000});
- assert.equal(await page.locator('#emuStart').isVisible(),false,'entry controls hidden in pilot mode');
- await page.screenshot({path:'artifacts/emu-square-rock.png'});
- // Watch a DOM mutation rather than polling loading=true: a second WASM
- // instance can fail or finish during a polling gap on slow headless runners.
- // Seeing the loader become visible proves the explicit click started the
- // same opt-in path, without requiring another expensive engine bootstrap.
+ // The original arch is the sole entry for Easy / Medium / Hard / Walk.
+ // Actually fly through its collision aperture in both directions.
+ const beforeGate=robotRequests.length;
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
+ await page.locator('#archEasy').waitFor({state:'visible',timeout:30000});
+ const frozen=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(frozen.gatePaused,true,'hitting the ONE stone arch must freeze flight');
+ assert.equal(frozen.race.mode,'menu','arch sweep should open four choices');
+ assert.equal(robotRequests.length,beforeGate,'the menu must not download robot physics');
+ for(const id of ['archEasy','archMedium','archHard','archWalk'])
+  assert.equal(await page.locator('#'+id).isVisible(),true,'all four adventure choices visible');
+ await page.evaluate(()=>window.__meadowStep(2));
+ assert.deepEqual(await page.evaluate(()=>window.__meadowFlight.state().pos),frozen.pos,
+  'world-clock stepping should not move the butterfly while the menu is open');
+ const frozenTime=await page.evaluate(()=>window.__meadowDiagnostics().simTime);
+ await page.waitForTimeout(400);
+ assert.equal(await page.evaluate(()=>window.__meadowDiagnostics().simTime),frozenTime,
+  'real browser animation time must freeze while the arch menu is open');
+ await page.screenshot({path:'artifacts/one-arch-four-choices.png'});
+ await page.locator('#archEasy').click();
+ const started=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(started.race.mode,'running');
+ assert.equal(started.race.course,0);
+ const first=started.race.courseGates[0].pos,forward=[Math.sin(started.heading),Math.cos(started.heading)];
+ const toFirst=[first[0]-started.pos[0],first[2]-started.pos[2]];
+ assert.ok((toFirst[0]*forward[0]+toFirst[1]*forward[1])/Math.hypot(...toFirst)>.75,
+  'the first Easy ring must be IN FRONT of the butterfly after the menu');
+ assert.ok(started.speed>1,'the butterfly must retain steerable speed');
+ assert.equal(robotRequests.length,beforeGate,'Easy race must not fetch any robot assets');
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=reverse',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
+ await page.locator('#archHard').waitFor({state:'visible',timeout:30000});
+ await page.locator('#archHard').click();
+ const reverse=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(reverse.race.course,2,'Hard option selects the hardest race');
+ const reverseFirst=reverse.race.courseGates[0].pos;
+ const rf=[Math.sin(reverse.heading),Math.cos(reverse.heading)];
+ const toR=[reverseFirst[0]-reverse.pos[0],reverseFirst[2]-reverse.pos[2]];
+ assert.ok((toR[0]*rf[0]+toR[1]*rf[1])/Math.hypot(...toR)>.75,
+  'reverse entry must also lead to a ring AHEAD of the butterfly');
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
+ await page.locator('#archMedium').waitFor({state:'visible',timeout:30000});
+ await page.locator('#archMedium').click();
+ assert.equal(await page.evaluate(()=>window.__meadowFlight.state().race.course),1,
+  'the Medium button must start the middle difficulty without extra rings');
+ // Escape is the non-intrusive way to keep exploring without making
+ // the modal a fifth visible choice.
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
+ await page.locator('#archEasy').waitFor({state:'visible',timeout:30000});
+ await page.keyboard.press('Escape');
+ assert.equal(await page.evaluate(()=>window.__meadowFlight.state().gatePaused),false);
+ assert.equal(await page.locator('#archMenu').isVisible(),false);
+ // Walk remains explicitly opt-in. A passive visit to the race arch
+ // must not initiate WASM/policy downloads.
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
+ await page.locator('#archWalk').waitFor({state:'visible',timeout:30000});
+ const beforeWalk=robotRequests.length;
  await page.evaluate(()=>{
-  window.__rockLoaderSeen=false;
-  const loader=document.getElementById('emuLoader');
+  window.__archLoaderSeen=false;
   new MutationObserver(()=>{
-   if(!loader.hidden)window.__rockLoaderSeen=true;
-  }).observe(loader,{attributes:true,attributeFilter:['hidden']});
+   if(!document.getElementById('emuLoader').hidden)window.__archLoaderSeen=true;
+  }).observe(document.getElementById('emuLoader'),{attributes:true,attributeFilter:['hidden']});
  });
- await page.locator('#emuWake').click();
+ await page.locator('#archWalk').click();
  await page.waitForTimeout(350);
- const rockResult=await page.evaluate(()=>({
-  seen:window.__rockLoaderSeen,state:window.__meadowEmu?.state(),
-  alert:document.getElementById('flyAlert')?.textContent
- }));
- console.log('Secret rock opt-in diagnostics:',JSON.stringify(rockResult).slice(0,900));
- assert.ok(rockResult.seen || rockResult.state.loading || rockResult.state.riding,
-  'the secret rock click must explicitly start the optional download');
+ const walk=await page.evaluate(()=>({seen:window.__archLoaderSeen,state:window.__meadowEmu.state()}));
+ assert.ok(walk.seen||walk.state.loading||walk.state.riding,'Walk must start the optional robot loader');
+ assert.ok(robotRequests.length>=beforeWalk,'robot downloads only follow a Walk click');
  assert.ok(!errors.some(e=>e.includes('pageerror')),errors.join('\n'));
- console.log('EMU physical rider, camera controls and rock opt-in browser smoke passed.');
-
+ console.log('Single original arch, front-facing races and optional robot browser smoke passed.');
 
 }finally{await browser.close()}

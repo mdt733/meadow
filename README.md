@@ -11,9 +11,9 @@ A small, living WebGL landscape: rolling grassland, a procedural apple tree and 
 - Background butterflies exploring flowers and canopy perches.
 - Ground lizard with articulated movement and hunting behaviour.
 - Playable butterfly flight with flapping, gliding, nectar, landing and perching.
-- Hidden stone arch leading to three aerial race circuits with boosts, time penalties and local best-times.
+- One original stone arch freezes the Meadow clock and opens **Easy**, **Medium**, **Hard**, or **Walk the robot**. Each race begins directly ahead of the butterfly, follows a wide 3-D figure eight and finishes back through that same arch.
 - Mobile controls including a thumbstick, optional phone tilt steering and fullscreen support where the browser allows it.
-- **Optional EMU robot ride:** the pinned 260M-step trained neural actor runs six physical actuators through real MuJoCo WASM, on a Meadow-derived collision heightfield. The **Walk the robot (~12 MB download)** button shows byte-accurate progress; butterfly-only visitors download none of these robot extras.
+- **Optional EMU robot ride:** at the original stone arch choose **Walk the robot**, with no need to land on a rock or navigate another landmark. The pinned 260M-step neural actor drives six real MuJoCo servos on Meadow terrain. Robot assets (~12 MB) download **only** after clicking Walk; the direct homepage Walk button still works. Press Esc at the arch to keep flying without starting a race.
 - Third-person **mouse/touch drag orbit** and **wheel/pinch zoom** for both flying butterfly and walking EMU. Release eases back into follow mode; the chosen zoom persists.
 
 ## Files
@@ -24,7 +24,8 @@ A small, living WebGL landscape: rolling grassland, a procedural apple tree and 
 | `meadow.html` | Thin HTML shell for the standalone/embedded homepage and pilot HUD. |
 | `assets/meadow.css` | Responsive presentation and HUD styling. |
 | `assets/meadow.js` | WebGL world and renderer, procedural scenery, butterfly/race gameplay, camera and input. |
-| `assets/flight-physics.js` | Pure, independently tested shared player/NPC lift and drag model. |
+| `assets/flight-physics.js` | Pure shared player/NPC lift and drag; a race-only stronger wingbeat profile powers physically attainable high routes without changing relaxed flight. |
+| `assets/race-course.js` | Deterministic 3-D figure-eight routes starting at the arch and facing the flight direction. |
 | `ground-lizard.js` | Articulated IK lizard, started only after the WebGL world's bridge is ready. |
 | `skybox.png` | Local sky panorama, loaded by relative path. |
 | `emu/champion.emupolicy` | Public trained neural policy (~0.89 MB); loaded only on request. |
@@ -81,7 +82,7 @@ On mobile, **Recenter** makes the current phone angle neutral. Motion sensing re
 
 ## Hidden race
 
-Find the small stone arch beyond the tree. Passing through it reveals green, orange and red course choices ahead of you. Each course follows a looping 3D route over the meadow and returns to the arch. Skipping one checkpoint costs five seconds, while a 30-second gap without progress ends the attempt. Personal bests are stored only in the browser with `localStorage`.
+Find the old stone arch beyond the tree. **Flying through it pauses time** and offers exactly four choices: Easy, Medium, Hard, or Walk the robot (Esc resumes free flight). There are no extra colour-selection rings and no second robot arch. Each course is a wide 3-D **figure eight** with about **59 m of side-to-side span**. The first checkpoint begins *in front of the butterfly* whichever way you entered; the first centre crossing passes near the tree and the second goes above its crown. The approach is aligned with the arch and the final checkpoints curve back for a forward finish. The butterfly gets a race-only physical wingbeat upgrade — you still need to flap, carry speed and manage stamina. The race ends through the original arch. Skipping one checkpoint costs five seconds, while a 30-second gap without progress ends the attempt. Personal bests are stored only in the browser with `localStorage`.
 
 ## Notes
 

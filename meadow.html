@@ -1,6 +1,6 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#a8cee8"><meta name="description" content="A peaceful, living meadow for a personal homepage."><title>Meadow.</title>
-<link rel="stylesheet" href="assets/meadow.css"><script>if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embedded')</script></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#a8cee8"><meta name="description" content="A peaceful, living meadow for a personal homepage."><meta name="meadow-build" content="smooth-rings-20261105"><title>Meadow.</title>
+<link rel="stylesheet" href="assets/meadow.css?v=smooth-rings-20261105"><script>if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embedded')</script></head><body>
 <div id="pilotEntrances" role="group" aria-label="Explore the meadow">
   <button id="flyStart" title="Pilot a butterfly in the meadow" type="button">🦋 Fly a butterfly</button>
   <button id="emuStart" title="Optional: download 12.0 MB of neural weights and real MuJoCo physics to walk EMU" type="button">🤖 Walk the robot <span class="emu-download-note">(≈12 MB download)</span></button>
@@ -21,13 +21,26 @@
   <div class="fly-instructions" id="flyInstructions">W · dive &nbsp; S · climb &nbsp; A/D · bank &nbsp; Space · flap &nbsp; Drag · look &nbsp; Scroll/pinch · zoom &nbsp; Esc · exit</div>
   <div class="fly-touch" aria-label="Touch flight controls"><div id="flyJoystick" class="fly-joystick" role="group" aria-label="Flight joystick: up to climb, down to dive, left and right to bank"><div id="flyStick" class="fly-stick" aria-hidden="true"></div></div><button type="button" class="fly-flap" data-flight-key="space">FLAP 🦋</button></div>
 </div>
-<button id="emuWake" type="button" hidden>✧ Wake the little robot</button>
+<div id="archMenu" hidden role="dialog" aria-modal="true" aria-labelledby="archMenuTitle" aria-describedby="archMenuDescription">
+  <div class="arch-menu-card">
+    <span class="arch-menu-symbol" aria-hidden="true">✦</span>
+    <h2 id="archMenuTitle">A little adventure?</h2>
+    <p id="archMenuDescription">Time stands still beneath the old arch. Choose where to go.</p>
+    <div class="arch-menu-options">
+      <button id="archEasy" class="arch-difficulty" type="button"><span class="arch-menu-dot easy"></span> Easy <small>A gentle figure-eight flight</small></button>
+      <button id="archMedium" class="arch-difficulty" type="button"><span class="arch-menu-dot medium"></span> Medium <small>Faster turns and climbs</small></button>
+      <button id="archHard" class="arch-difficulty" type="button"><span class="arch-menu-dot hard"></span> Hard <small>Sharp lines and smaller rings</small></button>
+      <button id="archWalk" type="button">🤖 Walk the robot <span class="emu-download-note">(≈12 MB download)</span></button>
+    </div>
+    <p class="arch-menu-skip">Press Esc or tap outside to keep exploring</p>
+  </div>
+</div>
 <div id="emuLoader" hidden role="status" aria-live="polite"><strong>Downloading EMU…</strong><progress id="emuProgress" max="1" value="0" aria-label="Optional robot download progress"></progress><div id="emuDownloadDetail">0.0 / ≈12 MB · 0%</div><div id="emuLoadStatus">Preparing the optional download…</div></div>
 <canvas id="scene" tabindex="0" aria-label="A golden hour meadow with an apple tree, miniature fairy door and gently swaying swing and wandering butterflies. Drag to orbit, scroll to zoom."></canvas><div id="mist"></div>
 <h1>Go <em>outside.</em></h1>
 <footer><small>nothing to catch up on.</small><div class="buttons"><button class="round" id="pause" title="Pause animation" aria-label="Pause animation" aria-pressed="false"><svg id="pauseIcon" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button></div></footer>
 <div id="webgl-fallback"><div><strong>Go outside.</strong><p>A WebGL-capable browser is needed for the meadow.</p></div></div>
-<script type="module" src="assets/meadow.js"></script><script>
+<script type="module" src="assets/meadow.js?v=smooth-rings-20261105"></script><script>
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==parent)return;
  if(event.data?.type==='meadow-flight-start'){window.__meadowFlight?.start();return}

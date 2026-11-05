@@ -1,4 +1,5 @@
-import {wingForces,NPC_AERO,FLY} from './flight-physics.js';
+import {wingForces,NPC_AERO,FLY,RACE_FLY} from './flight-physics.js?v=smooth-rings-20261105';
+import {RACE_TYPES,makeFigureEightCourse} from './race-course.js?v=smooth-rings-20261105';
 (()=>{'use strict';
 const $=id=>document.getElementById(id), canvas=$('scene');
 let emu=null,emuRiding=false,emuLoading=false;
@@ -333,7 +334,6 @@ for(let i=0;i<8900;i++){
 // ── Vegetation, dynamic wildlife and lightweight perch surfaces ──
 const flowers=[];
 const perchSites=[],rockSurfaces=[];
-const EMU_ROCK={x:7,z:9.1}; // the conspicuous square teal-and-gold rock
 let flowerTouch={flower:null,until:0};
 function nudgeFlower(f){if(!f)return;flowerTouch={flower:f,until:time+1.5};
  for(let i=0;i<7;i++)pollen.push({pos:[f.x+range(-.08,.08),f.y+.08+range(0,.12),f.z+range(-.08,.08)],velocity:[range(-.24,.24),range(.09,.36),range(-.24,.24)],life:range(.45,1.25)});
@@ -613,34 +613,6 @@ for(let i=0;i<17;i++){
  addRock(p,[r,sy,r*range(.65,1.50)],[range(0,TAU),lookout?range(-.2,.2):range(-.52,.52),lookout?range(-.2,.2):range(-.62,.62)],depth,range(.86,1.17));
  sceneryCounts.rocks++;
 }
-// The one *square* stone in Meadow: a pale blue-green cubic cairn with a
-// golden butterfly-sized diamond on top. Actual top triangles are registered
-// with exactly the same rock landing code as the round natural stones.
-function addEmuCubeRock(){
- const x=EMU_ROCK.x,z=EMU_ROCK.z,baseY=height(x,z)-.0275,topY=height(x,z)+.31;
- const w=.255,d=.24,bevel=.325;
- const a=[x-w,topY,z-d],b=[x+w,topY,z-d],c=[x+w,topY,z+d],e=[x-w,topY,z+d];
- const aa=[x-bevel,baseY,z-bevel],bb=[x+bevel,baseY,z-bevel];
- const cc=[x+bevel,baseY,z+bevel],ee=[x-bevel,baseY,z+bevel];
- // Tall tapered sides visibly contrast with Meadow's small rounded rocks.
- land.two(aa,bb,b,a,[.34,.48,.48]);land.two(bb,cc,c,b,[.33,.50,.51]);
- land.two(cc,ee,e,c,[.29,.45,.46]);land.two(ee,aa,a,e,[.41,.57,.55]);
- land.two(a,e,c,b,[.55,.71,.66]);
- // Engraved golden diamond with a tiny glowing heart. Kept within the flat
- // collidable top, so the butterfly lands at the actual rock surface.
- const glyphY=topY+.009;
- const north=[x,glyphY,z-.15],east=[x+.15,glyphY,z];
- const south=[x,glyphY,z+.15],west=[x-.15,glyphY,z];
- const mid=[x,glyphY,z];
- land.tri(north,west,mid,[.95,.79,.37]);
- land.tri(west,south,mid,[.89,.70,.30]);
- land.tri(south,east,mid,[1,.86,.46]);
- land.tri(east,north,mid,[.96,.77,.32]);
- const colliders=[{v:[a,e,c],normal:[0,1,0]},{v:[a,c,b],normal:[0,1,0]}];
- rockSurfaces.push({x,z,radius:.46,triangles:colliders,emuWake:true});
- sceneryCounts.rocks++;
-}
-addEmuCubeRock();
 const GROUND_LEAF_COUNT=38;
 {
  let litterSeed=0x51eed;
@@ -738,7 +710,6 @@ function vulnerablePerch(site){
  // The little marked EMU stone is an opt-in entrance, not lizard bait.
  // At half size it is otherwise low enough for the lizard to steal the
  // butterfly before a visitor can choose whether to download the robot.
- if(site.emuWake===true)return false;
  const p=perchPoint(site);
  if(Math.hypot(p[0],p[2])>14.8)return false;
  if(site.type==='ground'||site.type==='flower')return true;
@@ -800,7 +771,7 @@ function landingContact(previous,next,vertical,horizontal){
    if(Math.abs(next[0]-rock.x)>rock.radius||Math.abs(next[2]-rock.z)>rock.radius)continue;
    const top=rockHeightAt(rock,next[0],next[2]);
    if(top && top.y>height(next[0],next[2])+.015)
-    consider({type:'rock',pos:[next[0],top.y+.12,next[2]],normal:top.normal,emuWake:rock.emuWake===true},top.y+.12);
+    consider({type:'rock',pos:[next[0],top.y+.12,next[2]],normal:top.normal},top.y+.12);
   }
   if(horizontal<1.70)for(const f of flowers){
    if(Math.abs(next[0]-f.x)<.19&&Math.abs(next[2]-f.z)<.19&&Math.hypot(next[0]-f.x,next[2]-f.z)<.19)
@@ -851,7 +822,7 @@ for(let i=0;i<54;i++){let b=newBug(i);bugs.push(b)}
 // the nose angle: gravity trades altitude for airspeed and lift curves the path.
 // Quantities are *specific* forces (N/kg = m/s²); tweak here for game feel.
 const flight={active:false,b:null,keys:Object.create(null),speed:1.9,gamma:-.06,
- flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,cameraZoom:1,nectar:0,
+ flapCooldown:0,flapGlow:0,stalled:false,yawRate:0,cameraEye:null,lookYaw:0,lookElevation:.28,cameraZoom:1,gatePaused:false,gateCooldown:0,climbDemo:false,nectar:0,
  visit:new Set(),landed:false,perch:null,perchFlower:null,takeoffArmed:false,touchdown:0,caughtTimer:0,catches:0,flapCount:0,vs:0,aoa:0,drag:0,lift:0,
  mode:'GLIDING'};
 const joystick={x:0,y:0,pointer:null}; // Bank right +x, climb +y.
@@ -968,97 +939,17 @@ const flyHeading=()=>[Math.sin(flight.b.heading)*Math.cos(flight.b.pitch),Math.s
 // No physics engine or course assets: checkpoints are a handful of procedural
 // circles, positioned along smooth, preplanned loops. Colours denote difficulty.
 const RACE_START=[RACE_ARCH_X,height(RACE_ARCH_X,RACE_ARCH_Z)+1.40*RACE_ARCH_SCALE,RACE_ARCH_Z],RACE_TIMEOUT=30,RACE_SKIP_PENALTY=5;
-// Closed aerial circuits orbit the meadow in the SAME direction as the entry.
-// Each difficulty has its own radial meanders and altitude profile. The
-// selectable ring is part of the departure, and the last spline tangent
-// points straight through the stone arch: no start/end hairpins.
-const RACE_TYPES=[
- {name:'Green',color:[.40,.94,.49],radius:1.85,step:5.8},
- {name:'Orange',color:[1,.63,.23],radius:1.60,step:4.9},
- {name:'Red',color:[1,.30,.35],radius:1.36,step:4.1}
-];
-const race={mode:'idle',gates:[],choices:[],boosts:[],index:0,course:-1,elapsed:0,penalty:0,sinceGate:0,
- boostTime:0,finishedAt:0,best:null,notice:'',noticeTime:0,sense:1,entryForward:RACE_ARCH_FORWARD};
-function raceGate(p,previous,radius,color,boost=false){
- const n=norm(sub(p,previous));return {pos:p,normal:n,radius,color,boost};
-}
-// The three selections are in front of the butterfly in its ACTUAL direction,
-// regardless of which side of the stone arch it happened to approach from.
-function choiceGates(direction){
- const f=norm([direction[0],0,direction[2]]),right=norm(cross([0,1,0],f));
- return RACE_TYPES.map((t,i)=>{
-  const x=RACE_START[0]+f[0]*9.2+right[0]*(i-1)*3.55;
-  const z=RACE_START[2]+f[2]*9.2+right[2]*(i-1)*3.55;
-  const p=[x,Math.max(height(x,z)+2.9,RACE_START[1]+.8),z];
-  return {...raceGate(p,sub(p,f),1.34,t.color),name:t.name};
- });
-}
-// Each height is ABOVE actual local terrain. Progress around the circuit is
-// angular, so the lap naturally closes rather than requiring a return dash.
-// Periodic radial and altitude waves taper to zero at the arch. The loop
-// therefore returns with the SAME tangent and elevation it started with.
-function racePoint(difficulty,u,sense){
- const archAngle=Math.atan2(RACE_START[2],RACE_START[0]);
- const theta=archAngle+sense*u,window=Math.sin(u/2)**2;
- const radius=Math.hypot(RACE_START[0],RACE_START[2])+window*(
-  difficulty===0?1.45*Math.sin(2*u)+.65*Math.sin(3*u):
-  difficulty===1?1.4+2.4*Math.sin(2*u+.2)+.85*Math.sin(4*u-.3):
-  2.1+3.1*Math.sin(2*u+.3)+1.2*Math.sin(5*u-.5));
- const altitude=RACE_START[1]-height(RACE_START[0],RACE_START[2])+window*(
-  difficulty===0?3.7+1.25*Math.sin(2*u-.7):
-  difficulty===1?7.8+2.25*Math.cos(1.6*(u-3.1))+.65*Math.sin(3*u):
-  12.0+3.75*Math.cos(1.8*(u-3.0))+1.1*Math.sin(3*u));
- const x=radius*Math.cos(theta),z=radius*Math.sin(theta);
- return [x,height(x,z)+altitude,z];
-}
-// One genuine, continuous 3D path: choice -> smoothly merge with an
-// undulating loop -> descend through the arch, all in the departure direction.
-// A cubic Bezier departure matches the player's heading and the loop tangent.
-// Rings are spaced by 3D arc length, so climbs don't bunch them together.
+// One gateway pauses time and offers Easy, Medium, Hard or Walk.
+// The actual first checkpoint always begins in front of the butterfly.
+const race={mode:'idle',gates:[],boosts:[],index:0,course:-1,elapsed:0,penalty:0,sinceGate:0,
+ boostTime:0,finishedAt:0,best:null,notice:'',noticeTime:0,entryForward:RACE_ARCH_FORWARD};
 function raceCourse(index){
- const type=RACE_TYPES[index],choice=race.choices[index],sense=race.sense;
- const join=1.05,finish=TAU;
- const origin=choice.pos,merge=racePoint(index,join,sense);
- const arrival=norm(sub(racePoint(index,join+.01,sense),racePoint(index,join-.01,sense)));
- const control1=add(origin,add(mul(race.entryForward,6),[0,.75,0]));
- const control2=sub(merge,mul(arrival,6));
- const path=[],directions=[],cumulative=[0];
- function append(p,tangent){
-  if(path.length)cumulative.push(cumulative[cumulative.length-1]+len(sub(p,path[path.length-1])));
-  path.push(p);directions.push(norm(tangent));
- }
- const departSteps=Math.max(48,Math.ceil(len(sub(merge,origin))/.25));
- for(let j=0;j<departSteps;j++){
-  const t=j/departSteps,w=1-t;
-  const p=add(add(mul(origin,w*w*w),mul(control1,3*w*w*t)),
-   add(mul(control2,3*w*t*t),mul(merge,t*t*t)));
-  const tangent=add(add(mul(sub(control1,origin),3*w*w),mul(sub(control2,control1),6*w*t)),mul(sub(merge,control2),3*t*t));
-  append(p,tangent);
- }
- const steps=1050; // ~15cm along the circumference, generated only on race selection
- for(let j=0;j<=steps;j++){
-  const u=join+(finish-join)*j/steps;
-  const p=j===steps?[...RACE_START]:racePoint(index,u,sense);
-  const tangent=j===steps?mul(RACE_ARCH_FORWARD,sense):
-   sub(racePoint(index,u+.003,sense),racePoint(index,u-.003,sense));
-  append(p,tangent);
- }
- const total=cumulative[cumulative.length-1],count=Math.max(12,Math.round(total/type.step));
- const gates=[];let cursor=1;
- for(let k=1;k<=count;k++){
-  const distance=total*k/count;
-  while(cursor<cumulative.length-1&&cumulative[cursor]<distance)cursor++;
-  const a=cursor-1,b=cursor,t=clamp((distance-cumulative[a])/Math.max(1e-6,cumulative[b]-cumulative[a]),0,1);
-  const pos=k===count?[...RACE_START]:add(mul(path[a],1-t),mul(path[b],t));
-  const normal=k===count?mul(RACE_ARCH_FORWARD,sense):norm(add(mul(directions[a],1-t),mul(directions[b],t)));
-  gates.push({pos,normal,radius:k===count?.96*RACE_ARCH_SCALE:type.radius,
-   color:type.color,boost:k%4===3&&k!==count});
- }
- return gates;
+ return makeFigureEightCourse({index,start:RACE_START,
+  direction:race.entryForward,height,finishRadius:.96*RACE_ARCH_SCALE});
 }
-function raceReset(){race.mode='idle';race.gates.length=0;race.choices.length=0;race.boosts.length=0;
+function raceReset(){race.mode='idle';race.gates.length=0;race.boosts.length=0;
  race.index=0;race.course=-1;race.elapsed=0;race.penalty=0;race.sinceGate=0;race.boostTime=0;race.finishedAt=0;
- race.notice='';race.noticeTime=0;race.sense=1;race.entryForward=RACE_ARCH_FORWARD;}
+ race.notice='';race.noticeTime=0;race.entryForward=RACE_ARCH_FORWARD;}
 function raceToast(title,detail,seconds=4){
  const node=$('raceToast');node.innerHTML='';
  const head=document.createElement('strong');head.textContent=title;
@@ -1073,7 +964,7 @@ function raceSelect(index){
   const side=norm(cross([0,1,0],gate.normal));
   return {pos:add(gate.pos,add(mul(side,(i%2?1:-1)*gate.radius*.65),[0,-.48,0])),taken:false,index:i};
  }).filter(Boolean);
- raceToast(`${RACE_TYPES[index].name} circuit`,'Follow the rings · golden pollen gives a speed boost!',3);
+ raceToast(`${RACE_TYPES[index].name} figure eight`,'First under the canopy, then over the tree · flap to climb!',4);
 }
 // Exact plane sweep catches a gate even at high speed, without rewarding
 // grazing the rim or flying through a ring backwards.
@@ -1084,25 +975,35 @@ function throughGate(a,b,gate){
  return len(sub(hit,gate.pos))<=gate.radius;
 }
 function raceCrossing(a,b){
- if(race.mode==='idle'){
-  if(throughGate(a,b,{pos:RACE_START,normal:RACE_ARCH_FORWARD,radius:.98*RACE_ARCH_SCALE})||
-     throughGate(b,a,{pos:RACE_START,normal:RACE_ARCH_FORWARD,radius:.98*RACE_ARCH_SCALE})){
+ if(race.mode==='idle'&&time>=flight.gateCooldown){
+  const arch={pos:RACE_START,normal:RACE_ARCH_FORWARD,radius:.98*RACE_ARCH_SCALE};
+  if(throughGate(a,b,arch)||throughGate(b,a,arch)){
    const travel=sub(b,a),forward=Math.hypot(travel[0],travel[2])>.0001?travel:flyHeading();
-   race.sense=dot(forward,RACE_ARCH_FORWARD)>=0?1:-1;
    race.entryForward=norm([forward[0],0,forward[2]]);
-   race.mode='choices';race.choices=choiceGates(forward);race.sinceGate=0;
-   raceToast('Choose a circuit','GREEN · easy    ORANGE · medium    RED · hard',5);
+   race.mode='menu';race.sinceGate=0;
+   const delta=sub(b,a),denom=dot(delta,arch.normal);
+   const t=Math.abs(denom)>1e-6?clamp(-dot(sub(a,RACE_START),arch.normal)/denom,0,1):.5;
+   flight.b.pos=add(a,mul(delta,t));
+   flight.b.vel=[0,0,0];flight.b.mode='glide';flight.b.state='flying';
+   flight.gatePaused=true;flight.gateCooldown=time+5;
+   flight.speed=0;flight.gamma=0;flight.vs=0;flight.yawRate=0;
+   flight.keys=Object.create(null);resetJoystick();
+   $('archWalk').innerHTML=emu?'🤖 Walk the robot <span class="emu-download-note">(already loaded)</span>':
+    '🤖 Walk the robot <span class="emu-download-note">(≈12 MB download)</span>';
+   $('archMenu').hidden=false;$('flyMode').textContent='AT THE ARCH';
+   $('flyAlert').textContent='Time paused — choose your next adventure.';
+   $('archEasy').focus({preventScroll:true});
+   return true;
   }
- }else if(race.mode==='choices'){
-  const selected=race.choices.findIndex(gate=>throughGate(a,b,gate));
-  if(selected>=0)raceSelect(selected);
- }else if(race.mode==='running'){
+ }
+ if(race.mode==='running'){
   const current=race.gates[race.index],following=race.gates[race.index+1];
   if(!current)return;
   // Only a successful FORWARD crossing of the following gate counts as a
   // miss. Passing near the current gate leaves it active for another loop.
   const correct=throughGate(a,b,current);
-  const skipped=!correct&&following&&throughGate(a,b,following);
+  // Neither near-tree crossing can be bypassed by the +5s skip rule.
+  const skipped=!correct&&following&&!current.milestone&&throughGate(a,b,following);
   if(correct||skipped){
    const missedNumber=race.index+1;
    if(skipped)race.penalty+=RACE_SKIP_PENALTY;
@@ -1117,6 +1018,10 @@ function raceCrossing(a,b){
     const result=race.finishedAt<best?'New personal best! 🦋':`Personal best ${best.toFixed(1)}s`;
     raceToast(`${name} · ${race.finishedAt.toFixed(1)}s`,
      result+(race.penalty?` · Includes +${race.penalty}s skipped-ring penalty`:''),8);
+   }else if(correct&&current.milestone==='low'){
+    raceToast('Through the tree corridor!','Now climb for the upper crossing above its crown.',3.5);
+   }else if(correct&&current.milestone==='high'){
+    raceToast('Above the apple tree!','Second pass complete — follow the rings back to the arch.',3.5);
    }else if(skipped){
     raceToast(`Ring ${missedNumber} skipped · +${RACE_SKIP_PENALTY}s`,'Next checkpoint reached — keep going!',2.5);
    }else if(race.index%4===0){raceToast(`Checkpoint ${race.index}/${race.gates.length}`,'Keep flying!',1.3)}
@@ -1132,10 +1037,11 @@ function raceCrossing(a,b){
    raceToast('Golden pollen!','A burst of speed and refreshed stamina',1.7);
   }
  }
+ return false;
 }
 function raceTick(dt){
  if(!flight.active)return;
- if(race.mode==='choices'||race.mode==='running'){
+ if(race.mode==='running'){
   race.sinceGate+=dt;
   if(race.mode==='running')race.elapsed+=dt;
   if(race.sinceGate>=RACE_TIMEOUT){raceReset();raceToast('Course ended','No rings reached for 30 seconds',3.5)}
@@ -1146,7 +1052,7 @@ function raceTick(dt){
  }
  const el=$('flyRace');
  if(race.mode==='idle')el.textContent='';
- else if(race.mode==='choices')el.textContent=`Choose GREEN / ORANGE / RED · ${Math.ceil(RACE_TIMEOUT-race.sinceGate)}s`;
+ else if(race.mode==='menu')el.textContent='Time paused at the arch · Choose your adventure';
  else if(race.mode==='running'){
   const t=RACE_TYPES[race.course];
   el.textContent=`${t.name.toUpperCase()}  ·  ${race.index+1}/${race.gates.length} rings  ·  ${(race.elapsed+race.penalty).toFixed(1)}s${race.penalty?` (+${race.penalty}s penalty)`:''}  ·  ${Math.ceil(RACE_TIMEOUT-race.sinceGate)}s until reset${race.boostTime>0?'  ·  BOOST!':''}`;
@@ -1182,8 +1088,8 @@ function raceBand(gate,inner,outer,color){
 function drawRaces(){
  raceVerts.length=0;
  // The start arch is part of the terrain. Only active race rings glow.
- const rings=race.mode==='choices'?race.choices:
-  race.mode==='running'?[race.gates[race.index],race.gates[race.index+1]].filter(Boolean):[];
+ const rings=race.mode==='running'?
+  [race.gates[race.index],race.gates[race.index+1]].filter(Boolean):[];
  for(let i=0;i<rings.length;i++){
   const gate=rings[i],shade=i===1?.38:1,pulse=1+.035*Math.sin(time*2.6+i);
   const col=gate.color.map(x=>x*shade),r=gate.radius*pulse;
@@ -1206,15 +1112,29 @@ function drawRaces(){
  uploadDynamic(raceBuffer,raceVerts);attributes();gl.drawArrays(gl.TRIANGLES,0,raceVerts.length/10);
 }
 
-function showEmuRockPrompt(site){
- $('emuWake').hidden=!Boolean(flight.active&&flight.landed&&site?.emuWake&&!emuLoading);
- $('emuWake').textContent=emu?'✧ Ride EMU again':'✧ Wake EMU (≈12 MB download)';
+// Stop at the original arch. ESC skips the four choices and flies on.
+function leaveArchMenu(index=null){
+ if(!flight.gatePaused)return;
+ const choseRace=Number.isInteger(index)&&index>=0&&index<RACE_TYPES.length;
+ if(choseRace)raceSelect(index);
+ else raceReset();
+ flight.gatePaused=false;flight.gateCooldown=time+5;
+ $('archMenu').hidden=true;
+ // Set the airspeed back to a controllable physical start. Direction is
+ // unchanged, and no teleport is needed to reach the first ring.
+ flight.speed=3.2;flight.gamma=.04;flight.stalled=false;
+ flight.b.mode='glide';flight.b.state='flying';flight.b.energy=Math.max(flight.b.energy,.8);
+ canvas.focus({preventScroll:true});
 }
+for(const [id,index] of [['archEasy',0],['archMedium',1],['archHard',2]])
+ $(id).onclick=()=>leaveArchMenu(index);
+$('archWalk').onclick=()=>startRobotRide();
+$('archMenu').onclick=event=>{if(event.target===$('archMenu'))leaveArchMenu();};
 function mountEmu(){
  if(!emu||!flight.active)return;
- emuRiding=true;flight.landed=false;flight.perch=null;flight.perchFlower=null;
+ emuRiding=true;flight.gatePaused=false;$('archMenu').hidden=true;flight.landed=false;flight.perch=null;flight.perchFlower=null;
  flight.keys=Object.create(null);resetJoystick();flight.cameraEye=null;emuCameraRig=null;resetPilotCamera();
- $('emuWake').hidden=true;$('emuLeave').hidden=false;
+ $('archMenu').hidden=true;$('emuLeave').hidden=false;
  $('flyHudTitle').textContent='Butterfly riding EMU';
  document.querySelector('.fly-flap').textContent='HOP OFF 🦋';
  $('flyInstructions').textContent='W/S · walk   A/D · turn   Drag · look around   Scroll / pinch · zoom   Space · dismount   Esc · exit';
@@ -1235,13 +1155,13 @@ function dismountEmu(toFlight=true){
  }
 }
 $('emuLeave').onclick=()=>dismountEmu();
-// Both the homepage button and the actual rock landing use this ONE path.
+// The homepage button and the real fly-through arch share ONE lazy path.
 // The public homepage never fetches the 886 KB policy until a user opts in.
 async function startRobotRide(){
  if(emuLoading||emuRiding)return;
  if(!flight.active)beginFlight();
  if(emu){mountEmu();return;}
- emuLoading=true;$('emuWake').hidden=true;$('emuLoader').hidden=false;
+ emuLoading=true;$('archMenu').hidden=true;$('emuLoader').hidden=false;
  $('emuProgress').value=0;
  $('emuDownloadDetail').textContent='0.0 / ≈12 MB · 0%';
  $('emuLoadStatus').textContent='Preparing the optional download…';
@@ -1260,15 +1180,12 @@ async function startRobotRide(){
  }catch(error){
   console.error('Unable to wake EMU:',error);
   $('emuLoadStatus').textContent='Unable to wake EMU: '+String(error.message||error);
-  $('emuWake').hidden=false;$('emuWake').textContent='↻ Retry waking EMU';
+  if(flight.gatePaused){$('archMenu').hidden=false;
+   $('archWalk').textContent='↻ Retry walking EMU';}
   $('flyAlert').textContent='EMU could not load: '+String(error.message||error);
  }finally{emuLoading=false;$('emuLoader').hidden=true;}
 }
 $('emuStart').onclick=startRobotRide;
-$('emuWake').onclick=()=>{
- if(!flight.active||!flight.landed||!flight.perch?.emuWake)return;
- startRobotRide();
-};
 function stepEmu(dt){
  if(!emu)return;
  let command;
@@ -1298,7 +1215,7 @@ function beginFlight(){
  Object.assign(flight.b,{pos:[x,height(x,z)+2.45,z],heading:-2.62,pitch:.09,bank:0,energy:1,phase:0,hz:1/FLY.flapInterval,mode:'glide',state:'flying',col:[.99,.70,.23]});
  flight.keys=Object.create(null);flight.active=true;flight.speed=1.9;flight.gamma=-.06;
  flight.flapCooldown=0;flight.flapGlow=0;flight.stalled=false;flight.yawRate=0;
- flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;resetPilotCamera();flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;$('emuWake').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
+ flight.nectar=0;flight.visit.clear();pollen.length=0;flowerTouch.flower=null;flight.cameraEye=null;resetPilotCamera();flight.landed=false;flight.perch=null;flight.perchFlower=null;flight.takeoffArmed=false;flight.gatePaused=false;flight.gateCooldown=0;flight.climbDemo=false;$('archMenu').hidden=true;flight.touchdown=0;flight.caughtTimer=0;flight.catches=0;flight.flapCount=0;
  raceReset();$('flyRace').textContent='';$('raceDirection').hidden=true;$('raceToast').hidden=true;
  flight.vs=0;flight.mode='GLIDING';$('flyHud').hidden=false;$('flyStart').hidden=true;$('emuStart').hidden=true;
  document.documentElement.classList.add('flight-active');
@@ -1307,7 +1224,7 @@ function beginFlight(){
  canvas.focus({preventScroll:true});updateCamera();draw();
  if(window.parent!==window)window.parent.postMessage({type:'meadow-flight-state',active:true},location.origin);
 }
-function endFlight(){if(!flight.active)return;dismountEmu(false);$('emuWake').hidden=true;resetJoystick();setTiltMode(false);exitImmersive();document.documentElement.classList.remove('flight-active');raceReset();$('raceToast').hidden=true;$('raceDirection').hidden=true;$('flyRace').textContent='';flight.active=false;flight.keys=Object.create(null);flight.cameraEye=null;resetPilotCamera();flight.b=null;
+function endFlight(){if(!flight.active)return;dismountEmu(false);flight.gatePaused=false;$('archMenu').hidden=true;resetJoystick();setTiltMode(false);exitImmersive();document.documentElement.classList.remove('flight-active');raceReset();$('raceToast').hidden=true;$('raceDirection').hidden=true;$('flyRace').textContent='';flight.active=false;flight.keys=Object.create(null);flight.cameraEye=null;resetPilotCamera();flight.b=null;
  $('flyHud').hidden=true;$('flyStart').hidden=false;$('emuStart').hidden=false;
  down=null;updateCamera();draw();if(window.parent!==window)window.parent.postMessage({type:'meadow-flight-state',active:false},location.origin);
 }
@@ -1320,7 +1237,7 @@ function landFlight(site=null){
  flight.speed=0;flight.gamma=0;flight.yawRate=0;flight.vs=0;
  // Retain the current camera orbit across landing; release naturally drifts
  // it back behind the butterfly instead of snapping the view at touchdown.
- perchedPose(b,site);b.phase=PI/2;showEmuRockPrompt(site);
+ perchedPose(b,site);b.phase=PI/2;
  emitPollenOnFlower(site);
  // This only steers the existing lizard toward prey it can physically reach.
  // Safe tree/swing perches do NOT become mouse targets or edible butterflies.
@@ -1343,6 +1260,10 @@ function sweepNectar(from,to){
 }
 function stepFlight(dt){
  if(!flight.active)return;
+ if(flight.gatePaused){
+  // The butterfly is suspended, but other wildlife and the Meadow render.
+  flight.b.vel=[0,0,0];flight.vs=0;return;
+ }
  if(emuRiding&&emu){
   const p=emu.head,b=flight.b;b.pos=[p[0],p[1]+.055,p[2]];
   $('flySpeed').textContent=Math.abs(emu.vx).toFixed(2);
@@ -1352,7 +1273,10 @@ function stepFlight(dt){
   $('flyAlert').textContent='260M champion · MuJoCo 3.17 physical contacts · frames '+emu.pose.frames+' · falls '+emu.falls;
   return;
  }
- const b=flight.b,k=flight.keys,c=FLY;
+ const b=flight.b,k=flight.keys;
+ // Keep ordinary Meadow flying unchanged. During a race the same true
+ // lift/drag/energy physics gets a stronger wingbeat, NOT scripted altitude.
+ const c=race.mode==='running'||flight.climbDemo?RACE_FLY:FLY;
  // Integrate in small, bounded slices. Avoid frame-rate-dependent stall/wall impulses.
  const n=Math.ceil(dt/.018),h=dt/n;
  for(let j=0;j<n;j++){
@@ -1434,7 +1358,7 @@ function stepFlight(dt){
    const next=[b.pos[0]+(Math.sin(b.heading)*horizontal+gust)*h,
                b.pos[1]+vertical*h,
                b.pos[2]+Math.cos(b.heading)*horizontal*h];
-   raceCrossing(previous,next);
+   if(raceCrossing(previous,next))break;
    // All touchdown surfaces share one contact test and stationary perch pose.
    const contact=landingContact(previous,next,vertical,horizontal);
    if(contact){
@@ -1458,6 +1382,7 @@ function stepFlight(dt){
   b.vel=[Math.sin(b.heading)*sh,vh,Math.cos(b.heading)*sh];
   b.aoa=flight.aoa;b.speed=flight.speed;flight.vs=vh;
  }
+ if(flight.gatePaused)return;
  raceTick(dt);
  flight.caughtTimer=Math.max(0,flight.caughtTimer-dt);
  flight.mode=flight.landed?'PERCHED':flight.flapGlow>0?'POWERED':'GLIDING';
@@ -2076,6 +2001,14 @@ canvas.addEventListener('wheel',e=>{
 },{passive:false});
 function flightKey(e,isDown){
  if(!flight.active)return false;
+ if(flight.gatePaused){
+  if(e.key==='Escape'&&isDown){e.preventDefault();leaveArchMenu();return true;}
+  if(e.target?.closest?.('#archMenu'))return false;
+  if(['w','a','s','d',' '].includes((e.key||'').toLowerCase())||e.code==='Space'){
+   e.preventDefault();return true;
+  }
+  return false;
+ }
  if(emuRiding&&isDown&&(e.code==='Space'||e.key===' ')){e.preventDefault();dismountEmu();return true;}
  const key=e.code==='Space'||e.key===' '?'space':(e.key||'').toLowerCase();
  if(['w','a','s','d','space'].includes(key)){
@@ -2098,25 +2031,56 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;if(hidd
 function tick(ms){
  requestAnimationFrame(tick);resize();if(hidden||paused)return;
  if(ms-lastFrame<1000/(flight.active?(W<650?30:45):(W<650?20:24)))return;
+ if(flight.gatePaused){lastFrame=ms;draw();return;} // Freeze world time at the arch.
  const dt=Math.min((ms-lastFrame)/1000,.055);lastFrame=ms;time+=dt;
  evolve(dt,time);stepSwing(dt,time);stepEmu(dt);stepFlight(dt);stepPollen(dt);stepAirLife(dt);draw();
 }
 setPaused(paused);resize();requestAnimationFrame(tick);
 // Dedicated standalone pilot URL, for mobile browsers that restrict iframe fullscreen.
 if(new URLSearchParams(location.search).has('pilot'))beginFlight();
-window.__meadowFlight={start:beginFlight,stop:endFlight,state:()=>({active:flight.active,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},tilt:{enabled:tilt.enabled,ready:tilt.ready,bank:tilt.bank,pitch:tilt.pitch,angle:tilt.angle},joystick:{x:joystick.x,y:joystick.y},fullscreen:!!document.fullscreenElement,pos:flight.b?.pos.slice(),speed:flight.speed,gamma:flight.gamma,verticalSpeed:flight.vs,mode:flight.mode,stalled:flight.stalled,aoa:flight.aoa,lift:flight.lift,drag:flight.drag,heading:flight.b?.heading,nectar:flight.nectar,flaps:flight.flapCount,energy:flight.b?.energy,landed:flight.landed,perchedOnFlower:!!flight.perchFlower,perch:flight.perch?.type||null,safe:flight.landed&&!vulnerablePerch(flight.perch),catches:flight.catches,availableNectar:flowers.filter((f,i)=>f.nectar&&!flight.visit.has(i)).length,race:{mode:race.mode,course:race.course,index:race.index,total:race.gates.length,elapsed:race.elapsed,penalty:race.penalty,scoredTime:race.elapsed+race.penalty,sinceGate:race.sinceGate,boostTime:race.boostTime,best:race.best,next:race.mode==='running'?race.gates[race.index]?.pos:race.mode==='idle'?RACE_START:null,choices:race.choices.map(g=>({name:g.name,pos:g.pos}))}})};
-window.__meadowStep=(seconds)=>{let count=Math.ceil(seconds/.05);for(let i=0;i<count;i++){time+=.05;evolve(.05,time);stepSwing(.05,time);stepEmu(.05);stepFlight(.05);stepPollen(.05);stepAirLife(.05)}draw()};
-// Explicit preview route for browser testing; normal visits still need a rock landing.
-if(new URLSearchParams(location.search).has('emu-demo')){
+window.__meadowFlight={start:beginFlight,stop:endFlight,state:()=>({active:flight.active,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},gatePaused:flight.gatePaused,tilt:{enabled:tilt.enabled,ready:tilt.ready,bank:tilt.bank,pitch:tilt.pitch,angle:tilt.angle},joystick:{x:joystick.x,y:joystick.y},fullscreen:!!document.fullscreenElement,pos:flight.b?.pos.slice(),speed:flight.speed,gamma:flight.gamma,verticalSpeed:flight.vs,mode:flight.mode,stalled:flight.stalled,aoa:flight.aoa,lift:flight.lift,drag:flight.drag,heading:flight.b?.heading,nectar:flight.nectar,flaps:flight.flapCount,energy:flight.b?.energy,landed:flight.landed,perchedOnFlower:!!flight.perchFlower,perch:flight.perch?.type||null,safe:flight.landed&&!vulnerablePerch(flight.perch),catches:flight.catches,availableNectar:flowers.filter((f,i)=>f.nectar&&!flight.visit.has(i)).length,race:{mode:race.mode,course:race.course,index:race.index,total:race.gates.length,elapsed:race.elapsed,penalty:race.penalty,scoredTime:race.elapsed+race.penalty,sinceGate:race.sinceGate,boostTime:race.boostTime,best:race.best,next:race.mode==='running'?race.gates[race.index]?.pos:race.mode==='idle'?RACE_START:null,choices:[],courseGates:race.gates.map(g=>({pos:[...g.pos],normal:[...g.normal],radius:g.radius,milestone:g.milestone}))}})};
+window.__meadowStep=(seconds)=>{if(flight.gatePaused){draw();return;}let count=Math.ceil(seconds/.05);for(let i=0;i<count;i++){time+=.05;evolve(.05,time);stepSwing(.05,time);stepEmu(.05);stepFlight(.05);stepPollen(.05);stepAirLife(.05)}draw()};
+// A bounded physical climb trial in a clear part of the meadow. The browser
+// still drives the actual same lift/drag/energy integration as normal flight.
+if(new URLSearchParams(location.search).has('climb-demo')){
  beginFlight();
- const rock=rockSurfaces.find(r=>r.emuWake);
- const top=rock && rockHeightAt(rock,EMU_ROCK.x,EMU_ROCK.z);
- if(rock&&top)landFlight({type:'rock',pos:[EMU_ROCK.x,top.y+.12,EMU_ROCK.z],
-  normal:top.normal,emuWake:true});
+ const b=flight.b;
+ b.pos=[-17,height(-17,-10)+2.8,-10];
+ b.heading=0;b.pitch=.16;b.bank=0;b.energy=1;b.state='flying';
+ flight.speed=3.0;flight.gamma=.10;flight.stalled=false;
+ flight.climbDemo=true;
+}
+// Browser acceptance entry: physically fly at the original arch, then
+// use the identical menu buttons that visitors see, with no hidden gate.
+const archTrial=new URLSearchParams(location.search).get('arch-flight-demo');
+if(archTrial!==null){
+ beginFlight();
+ const forward=mul(RACE_ARCH_FORWARD,archTrial==='reverse'?-1:1);
+ const b=flight.b;
+ b.pos=sub(RACE_START,mul(forward,2.6));
+ b.heading=Math.atan2(forward[0],forward[2]);b.pitch=.14;b.bank=0;b.energy=1;
+ flight.speed=4.3;flight.gamma=.035;flight.stalled=false;
+}
+const raceTrial=new URLSearchParams(location.search).get('race-demo');
+if(raceTrial!==null){
+ beginFlight();
+ const reverse=raceTrial.startsWith('reverse-');
+ const value=raceTrial.replace(/^reverse-/,'').toLowerCase();
+ const selected=RACE_TYPES.findIndex(x=>x.name.toLowerCase()===value);
+ const aliases={green:0,orange:1,red:2};
+ const index=selected>=0?selected:(aliases[value]??0);
+ const forward=mul(RACE_ARCH_FORWARD,reverse?-1:1),b=flight.b;
+ b.pos=sub(RACE_START,mul(forward,2.2));
+ b.heading=Math.atan2(forward[0],forward[2]);b.pitch=.14;b.bank=0;b.energy=1;
+ // The real swept-plane trigger opens the same four-button menu.
+ raceCrossing(b.pos,add(RACE_START,mul(forward,.2)));
+ if(flight.gatePaused)leaveArchMenu(index);
 }
 window.__meadowEmu={start:startRobotRide,state:()=>({loaded:!!emu,riding:emuRiding,loading:emuLoading,
-  pose:emu?.pose||null,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},commandYaw:emu?.sim?.commandTarget?.yaw??null,commandVx:emu?.sim?.commandTarget?.vx??null,headingTarget:emu?.sim?.headingTarget??null,rock:{...EMU_ROCK},clearing:{...EMU_CLEARING},cameraRig:emuCameraRig?{x:emuCameraRig.x,y:emuCameraRig.y,z:emuCameraRig.z,heading:emuCameraRig.h}:null}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
-window.__meadowDiagnostics=()=>({cameraSettings:{...cameraSettings},render:'webgl',lizardConfig:{...lizardConfig},lizardStrokeCount:lizardLines.length,landscape:{...landscape},lighting:{...lighting},groundTriangles:Math.round(land.count/3),leaves:Math.round(foliage.count/6),apples:Math.round(fruit.count/270),swingAngle:swingState.angle,swingLength:ropeLength,skybox:skySource!=='procedural',skyboxSource:skySource,skyboxStatus:skyStatus,skyLoadAttempts:[...skyLoadAttempts],skyboxURL:SKYBOX_URL,skyboxTextureComplete:gl.isTexture(skyTex),fairyDoor:true,doorScale:.27,scenery:{...sceneryCounts},nectarFlowers:flowers.filter(f=>f.nectar).length,perchSites:perchSites.length,rockCollisionSurfaces:rockSurfaces.length,visiblePollen:pollen.length,ambientMotes:ambientMotes.length,fallingLeaves:fallingLeaves.length,groundLeaves:GROUND_LEAF_COUNT,leafSources:leafSources.length,flightCatches:flight.catches,camera:{turn,elev,radius},butterflies:bugs.slice(0,config.count).map(b=>({x:b.pos[0],y:b.pos[1],z:b.pos[2],state:b.state,intent:b.intent,tourStops:b.tourStops,target:[...b.target],mode:b.mode,vel:b.vel,pitch:b.pitch,bank:b.bank,aoa:b.aoa,speed:b.speed,energy:b.energy,wingPhase:b.phase,altitude:b.pos[1]-height(b.pos[0],b.pos[2])}))});
+  pose:emu?.pose||null,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},commandYaw:emu?.sim?.commandTarget?.yaw??null,commandVx:emu?.sim?.commandTarget?.vx??null,headingTarget:emu?.sim?.headingTarget??null,arch:{center:[...RACE_START],forward:[...RACE_ARCH_FORWARD],paused:flight.gatePaused},
+  clearing:{...EMU_CLEARING},cameraRig:emuCameraRig?{x:emuCameraRig.x,y:emuCameraRig.y,z:emuCameraRig.z,heading:emuCameraRig.h}:null}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
+window.__meadowBuild='smooth-rings-20261105';
+window.__meadowDiagnostics=()=>({build:window.__meadowBuild,simTime:time,cameraSettings:{...cameraSettings},render:'webgl',lizardConfig:{...lizardConfig},lizardStrokeCount:lizardLines.length,landscape:{...landscape},lighting:{...lighting},groundTriangles:Math.round(land.count/3),leaves:Math.round(foliage.count/6),apples:Math.round(fruit.count/270),swingAngle:swingState.angle,swingLength:ropeLength,skybox:skySource!=='procedural',skyboxSource:skySource,skyboxStatus:skyStatus,skyLoadAttempts:[...skyLoadAttempts],skyboxURL:SKYBOX_URL,skyboxTextureComplete:gl.isTexture(skyTex),fairyDoor:true,doorScale:.27,scenery:{...sceneryCounts},nectarFlowers:flowers.filter(f=>f.nectar).length,perchSites:perchSites.length,rockCollisionSurfaces:rockSurfaces.length,visiblePollen:pollen.length,ambientMotes:ambientMotes.length,fallingLeaves:fallingLeaves.length,groundLeaves:GROUND_LEAF_COUNT,leafSources:leafSources.length,flightCatches:flight.catches,camera:{turn,elev,radius},butterflies:bugs.slice(0,config.count).map(b=>({x:b.pos[0],y:b.pos[1],z:b.pos[2],state:b.state,intent:b.intent,tourStops:b.tourStops,target:[...b.target],mode:b.mode,vel:b.vel,pitch:b.pitch,bank:b.bank,aoa:b.aoa,speed:b.speed,energy:b.energy,wingPhase:b.phase,altitude:b.pos[1]-height(b.pos[0],b.pos[2])}))});
 // Import after the scene publishes its world bridge, so lizard IK never
 // starts against a missing renderer (module evaluation order is explicit).
 import('../ground-lizard.js').catch(error=>console.error('Lizard failed to load',error));
