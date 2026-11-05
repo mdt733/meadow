@@ -106,6 +106,7 @@ if (-not $scene.Contains("window.__meadowBuild='$build'") -or
     -not $scene.Contains('buildRobotArch()') -or
     -not $scene.Contains('makeFigureEightCourse') -or
     -not $course.Contains('export function raceFigurePoint') -or
+    -not $course.Contains('spanX:29.4') -or
     -not $physics.Contains('export const RACE_FLY')) {
   throw 'Missing robot arch, figure eight or race flight physics: refusing install.'
 }
