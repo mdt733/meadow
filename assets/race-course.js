@@ -76,8 +76,13 @@ export function makeFigureEightCourse({index,start,direction,height,finishRadius
  }
  // Swing behind the arch and finish through its real crossing plane,
  // heading in the same direction as the butterfly originally entered.
+ const behind=add(start,mul(f,-14));
  bezier(last,add(last,mul(outT,reverse?12:10)),
-  sub(start,mul(f,12)),start,125,true);
+  sub(behind,mul(f,9)),behind,120,false);
+ // Finish with a genuinely straight 14m arch approach, not merely a
+ // mathematically aligned final tangent after a hairpin.
+ bezier(behind,add(behind,mul(f,4.5)),
+  sub(start,mul(f,5)),start,55,true);
  const total=distance.at(-1),count=Math.max(18,Math.round(total/kind.step));
  function nearestDistance(pos){
   let closest=Infinity,idx=0;
