@@ -95,6 +95,8 @@ test('EVERY checkpoint is traversable forwards in sequence, without reverse-faci
   const gates=makeFigureEightCourse({index:i,start:arch,direction:dir,height,finishRadius:.64});
   for(let k=0;k<gates.length;k++){
    const gate=gates[k],before=k?gates[k-1].pos:arch;
+   assert.ok(Math.hypot(gate.pos[0],gate.pos[2])<35,
+    RACE_TYPES[i].name+' route must stay in the visible, detailed Meadow');
    const after=k+1<gates.length?gates[k+1].pos:
     gate.pos.map((v,j)=>v+dir[j]*4);
    const incoming=unit(diff(gate.pos,before));
