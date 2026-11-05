@@ -10,7 +10,10 @@ export const RACE_TYPES=Object.freeze([
  {name:'Orange',color:[1,.63,.23],radius:1.65,step:5.0},
  {name:'Red',color:[1,.30,.35],radius:1.42,step:4.35}
 ]);
-export const EIGHT={centerX:3.5,centerZ:-.9,spanX:14.7,spanZ:12.7,entry:-Math.PI/4};
+// 59m side-to-side: twice the previous 29.4m width. The two vertical
+// centre crossings still meet beside the tree, and the seam stays
+// within 9m of the actual stone race arch instead of moving away from it.
+export const EIGHT={centerX:3.5,centerZ:-.9,spanX:29.4,spanZ:12.7,entry:-Math.PI/4};
 
 export function raceFigurePoint(index,u,height){
  if(!Number.isInteger(index)||index<0||index>=RACE_TYPES.length)
@@ -72,17 +75,21 @@ export function makeFigureEightCourse({index,choice,start,direction,height,finis
    append(cubic(a,b,c,d,t),cubicDerivative(a,b,c,d,t));
   }
  }
- // One smooth outbound link, the FULL 8 (first low crossing, next high),
- // then one smooth return link to the original stone finish arch.
- bezier(choice.pos,add(choice.pos,mul(f,4.8)),
+ // Approach: keep the selected colour gate's outbound heading, begin
+ // gaining altitude early, then arc into the widened lobe without a
+ // snap, sharp climb or reversing the butterfly's heading.
+ bezier(choice.pos,add(add(choice.pos,mul(f,6)),[0,2,0]),
   sub(first,mul(inT,6)),first,125,false);
  const samples=1250;
  for(let i=0;i<=samples;i++){
   const u=entry+TAU*i/samples;
   append(at(u),tangent(at,u));
  }
- bezier(last,add(last,mul(outT,5.5)),
-  sub(start,mul(f,6)),start,125,true);
+ // Return: loop behind the REAL arch before making a level, forward
+ // approach. With a wider eight, aiming directly back at the arch would
+ // put the penultimate ring in FRONT of the finish and invite a U-turn.
+ bezier(last,add(last,mul(outT,10)),
+  sub(start,mul(f,12)),start,125,true);
  const total=distance[distance.length-1],count=Math.max(18,Math.round(total/kind.step));
  // Guarantee a real checkpoint at EACH shared-X/Z tree crossing. Regular
  // arc-length ring spacing alone can otherwise miss the defining feature
