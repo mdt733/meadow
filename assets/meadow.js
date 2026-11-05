@@ -1,5 +1,5 @@
-import {wingForces,NPC_AERO,FLY,RACE_FLY} from './flight-physics.js?v=robot-arch-eight-20261105';
-import {RACE_TYPES,raceChoices,makeFigureEightCourse} from './race-course.js?v=robot-arch-eight-20261105';
+import {wingForces,NPC_AERO,FLY,RACE_FLY} from './flight-physics.js?v=wide-eight-20261105';
+import {RACE_TYPES,raceChoices,makeFigureEightCourse} from './race-course.js?v=wide-eight-20261105';
 (()=>{'use strict';
 const $=id=>document.getElementById(id), canvas=$('scene');
 let emu=null,emuRiding=false,emuLoading=false;
@@ -2148,7 +2148,7 @@ window.__meadowEmu={start:startRobotRide,state:()=>({loaded:!!emu,riding:emuRidi
   pose:emu?.pose||null,camera:{yaw:flight.lookYaw,elevation:flight.lookElevation,zoom:flight.cameraZoom,dragging:cameraGrip,eye:camera?.eye?.slice()},commandYaw:emu?.sim?.commandTarget?.yaw??null,commandVx:emu?.sim?.commandTarget?.vx??null,headingTarget:emu?.sim?.headingTarget??null,arch:{x:EMU_ARCH_X,z:EMU_ARCH_Z,center:[...EMU_ARCH_CENTER],
     forward:[...EMU_ARCH_FORWARD],radius:1.10*EMU_ARCH_SCALE,paused:flight.gatePaused},
   clearing:{...EMU_CLEARING},cameraRig:emuCameraRig?{x:emuCameraRig.x,y:emuCameraRig.y,z:emuCameraRig.z,heading:emuCameraRig.h}:null}),dismount:()=>dismountEmu(),mount:()=>mountEmu()};
-window.__meadowBuild='robot-arch-eight-20261105';
+window.__meadowBuild='wide-eight-20261105';
 window.__meadowDiagnostics=()=>({build:window.__meadowBuild,cameraSettings:{...cameraSettings},render:'webgl',lizardConfig:{...lizardConfig},lizardStrokeCount:lizardLines.length,landscape:{...landscape},lighting:{...lighting},groundTriangles:Math.round(land.count/3),leaves:Math.round(foliage.count/6),apples:Math.round(fruit.count/270),swingAngle:swingState.angle,swingLength:ropeLength,skybox:skySource!=='procedural',skyboxSource:skySource,skyboxStatus:skyStatus,skyLoadAttempts:[...skyLoadAttempts],skyboxURL:SKYBOX_URL,skyboxTextureComplete:gl.isTexture(skyTex),fairyDoor:true,doorScale:.27,scenery:{...sceneryCounts},nectarFlowers:flowers.filter(f=>f.nectar).length,perchSites:perchSites.length,rockCollisionSurfaces:rockSurfaces.length,visiblePollen:pollen.length,ambientMotes:ambientMotes.length,fallingLeaves:fallingLeaves.length,groundLeaves:GROUND_LEAF_COUNT,leafSources:leafSources.length,flightCatches:flight.catches,camera:{turn,elev,radius},butterflies:bugs.slice(0,config.count).map(b=>({x:b.pos[0],y:b.pos[1],z:b.pos[2],state:b.state,intent:b.intent,tourStops:b.tourStops,target:[...b.target],mode:b.mode,vel:b.vel,pitch:b.pitch,bank:b.bank,aoa:b.aoa,speed:b.speed,energy:b.energy,wingPhase:b.phase,altitude:b.pos[1]-height(b.pos[0],b.pos[2])}))});
 // Import after the scene publishes its world bridge, so lizard IK never
 // starts against a missing renderer (module evaluation order is explicit).
