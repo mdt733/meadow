@@ -184,7 +184,7 @@ try{
  assert.equal(cruise.stalled,false,'climb must not enter the wing stall state');
  assert.equal(cruise.landed,false);
 
- // Exercise the ACTUAL in-browser arch -> colour gate -> course selection
+ // Exercise the actual in-browser arch -> four-option menu -> course selection
  // pipeline, not merely the pure Node geometry generator.
  await page.goto('http://127.0.0.1:8765/meadow.html?race-demo=red',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__meadowFlight?.state().race.mode==='running');
@@ -435,6 +435,10 @@ try{
  await page.evaluate(()=>window.__meadowStep(2));
  assert.deepEqual(await page.evaluate(()=>window.__meadowFlight.state().pos),frozen.pos,
   'world-clock stepping should not move the butterfly while the menu is open');
+ const frozenTime=await page.evaluate(()=>window.__meadowDiagnostics().simTime);
+ await page.waitForTimeout(400);
+ assert.equal(await page.evaluate(()=>window.__meadowDiagnostics().simTime),frozenTime,
+  'real browser animation time must freeze while the arch menu is open');
  await page.screenshot({path:'artifacts/one-arch-four-choices.png'});
  await page.locator('#archEasy').click();
  const started=await page.evaluate(()=>window.__meadowFlight.state());
@@ -458,6 +462,13 @@ try{
  const toR=[reverseFirst[0]-reverse.pos[0],reverseFirst[2]-reverse.pos[2]];
  assert.ok((toR[0]*rf[0]+toR[1]*rf[1])/Math.hypot(...toR)>.75,
   'reverse entry must also lead to a ring AHEAD of the butterfly');
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
+ await page.locator('#archMedium').waitFor({state:'visible',timeout:30000});
+ await page.locator('#archMedium').click();
+ assert.equal(await page.evaluate(()=>window.__meadowFlight.state().race.course),1,
+  'the Medium button must start the middle difficulty without extra rings');
  // Escape is the non-intrusive way to keep exploring without making
  // the modal a fifth visible choice.
  await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
