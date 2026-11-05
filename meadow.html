@@ -21,13 +21,18 @@
   <div class="fly-instructions" id="flyInstructions">W · dive &nbsp; S · climb &nbsp; A/D · bank &nbsp; Space · flap &nbsp; Drag · look &nbsp; Scroll/pinch · zoom &nbsp; Esc · exit</div>
   <div class="fly-touch" aria-label="Touch flight controls"><div id="flyJoystick" class="fly-joystick" role="group" aria-label="Flight joystick: up to climb, down to dive, left and right to bank"><div id="flyStick" class="fly-stick" aria-hidden="true"></div></div><button type="button" class="fly-flap" data-flight-key="space">FLAP 🦋</button></div>
 </div>
-<div id="emuGatePrompt" hidden role="dialog" aria-modal="true" aria-labelledby="emuGateTitle">
-  <div class="emu-gate-card">
-    <span class="emu-gate-symbol" aria-hidden="true">✦ 🤖 ✦</span>
-    <h2 id="emuGateTitle">You found EMU!</h2>
-    <p>The butterfly rests at the robot arch. Want to take the six-servo walker out for a stroll?</p>
-    <button id="emuGateWalk" type="button">🤖 Walk the robot <span class="emu-download-note">(≈12 MB download)</span></button>
-    <button id="emuGateContinue" type="button">🦋 Keep flying</button>
+<div id="archMenu" hidden role="dialog" aria-modal="true" aria-labelledby="archMenuTitle" aria-describedby="archMenuDescription">
+  <div class="arch-menu-card">
+    <span class="arch-menu-symbol" aria-hidden="true">✦</span>
+    <h2 id="archMenuTitle">A little adventure?</h2>
+    <p id="archMenuDescription">Time stands still beneath the old arch. Choose where to go.</p>
+    <div class="arch-menu-options">
+      <button id="archEasy" class="arch-difficulty" type="button"><span class="arch-menu-dot easy"></span> Easy <small>A gentle figure-eight flight</small></button>
+      <button id="archMedium" class="arch-difficulty" type="button"><span class="arch-menu-dot medium"></span> Medium <small>Faster turns and climbs</small></button>
+      <button id="archHard" class="arch-difficulty" type="button"><span class="arch-menu-dot hard"></span> Hard <small>Sharp lines and smaller rings</small></button>
+      <button id="archWalk" type="button">🤖 Walk the robot <span class="emu-download-note">(≈12 MB download)</span></button>
+    </div>
+    <p class="arch-menu-skip">Press Esc to keep exploring the meadow</p>
   </div>
 </div>
 <div id="emuLoader" hidden role="status" aria-live="polite"><strong>Downloading EMU…</strong><progress id="emuProgress" max="1" value="0" aria-label="Optional robot download progress"></progress><div id="emuDownloadDetail">0.0 / ≈12 MB · 0%</div><div id="emuLoadStatus">Preparing the optional download…</div></div>
