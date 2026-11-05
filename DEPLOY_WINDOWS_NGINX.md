@@ -53,10 +53,122 @@ The existing PHP homepage should continue embedding or linking to
 other files under the same root. Visitors who never select **Walk the robot**
 or **Wake EMU** don't fetch the heavy actor and WASM files.
 
-## Safe PowerShell deployment (run on the Windows nginx server)
+## Test draft PR #4 without replacing your live Meadow
 
-**Merge and approve the relevant cleanup PR before deploying from `main`.**
-The figure-eight flight code is introduced by draft PR #4. The existing
+**Important:** PR #4 has **not** been merged into `main`. The post-merge
+deployment recipe below deliberately downloads `main`, so running it now
+gets the OLD race and NO robot arch. The new `assets/race-course.js` does not
+exist on `main`; an attempted 12-file deployment from `main` fails during
+staging and leaves the previous site alone.
+
+To playtest the actual feature branch on your Windows/nginx server, use the
+following **preview-only** PowerShell paste. It places all 12 relative-path
+assets in `C:\nginx\html\meadow-preview\`, including EMU physics;
+it does not change `index.php`, `meadow.html`, existing `assets/`,
+or `hangar/` at the web root.
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$branch = 'feature/robot-arch-figure-eight-races'
+$build = 'robot-arch-eight-20261105'
+$base = "https://raw.githubusercontent.com/mdt733/meadow/$branch"
+$root = 'C:\nginx\html\meadow-preview'
+$stage = Join-Path $env:TEMP ('meadow-pr4-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$files = @(
+  'meadow.html',
+  'assets/meadow.css',
+  'assets/meadow.js',
+  'assets/flight-physics.js',
+  'assets/race-course.js',
+  'ground-lizard.js',
+  'skybox.png',
+  'emu/champion.emupolicy',
+  'emu/emu.js',
+  'emu/policy.js',
+  'emu/physics/dist/emu-physics.js',
+  'emu/physics/dist/assets/mujoco-CGsuVDfV.wasm'
+)
+
+# Always stage the complete feature branch; nothing live changes on error.
+foreach ($rel in $files) {
+  $dest = Join-Path $stage $rel
+  New-Item -ItemType Directory -Force (Split-Path $dest -Parent) | Out-Null
+  Invoke-WebRequest -UseBasicParsing -Uri "$base/$rel" -OutFile $dest
+}
+$html = Get-Content -Raw (Join-Path $stage 'meadow.html')
+$scene = Get-Content -Raw (Join-Path $stage 'assets/meadow.js')
+$course = Get-Content -Raw (Join-Path $stage 'assets/race-course.js')
+$physics = Get-Content -Raw (Join-Path $stage 'assets/flight-physics.js')
+if (-not $html.Contains("meadow-build`" content=`"$build")) {
+  throw 'Wrong Meadow HTML version: refusing to install old scene.'
+}
+if (-not $scene.Contains("window.__meadowBuild='$build'") -or
+    -not $scene.Contains('buildRobotArch()') -or
+    -not $scene.Contains('makeFigureEightCourse') -or
+    -not $course.Contains('export function raceFigurePoint') -or
+    -not $physics.Contains('export const RACE_FLY')) {
+  throw 'Missing robot arch, figure eight or race flight physics: refusing install.'
+}
+$expected = @{
+  'emu/champion.emupolicy' = 886002
+  'emu/physics/dist/assets/mujoco-CGsuVDfV.wasm' = 10927842
+}
+$loader = Get-Content -Raw (Join-Path $stage 'emu/emu.js')
+$runtimeMatch = [regex]::Match($loader, "name:'runtime',path:'[^']+',bytes:(\d+)")
+if (-not $runtimeMatch.Success) { throw 'Runtime size manifest missing' }
+$expected['emu/physics/dist/emu-physics.js'] = [int]$runtimeMatch.Groups[1].Value
+foreach ($rel in $expected.Keys) {
+  if ((Get-Item -LiteralPath (Join-Path $stage $rel)).Length -ne $expected[$rel]) {
+    throw "Download incomplete: $rel"
+  }
+}
+
+# Only replace the isolated preview folder after all files are verified.
+foreach ($rel in $files) {
+  $target = Join-Path $root $rel
+  New-Item -ItemType Directory -Force (Split-Path $target -Parent) | Out-Null
+  Copy-Item -LiteralPath (Join-Path $stage $rel) -Destination $target -Force
+}
+Write-Host "Preview build $build installed from $branch (not main)."
+Write-Host 'Open https://mdt733.ddns.net/meadow-preview/meadow.html?emu-arch-flight-demo=forward'
+Write-Host 'Or https://mdt733.ddns.net/meadow-preview/meadow.html?race-demo=red'
+```
+
+Use these **standalone preview links** rather than your PHP homepage:
+
+- **EMU arch:** `https://mdt733.ddns.net/meadow-preview/meadow.html?emu-arch-flight-demo=forward`
+- **Red figure eight:** `https://mdt733.ddns.net/meadow-preview/meadow.html?race-demo=red`
+- **Normal Meadow:** `https://mdt733.ddns.net/meadow-preview/meadow.html`
+
+The first fly-through should display **You found EMU!**; Red should say
+**Red figure eight**. In the browser developer console,
+`window.__meadowBuild` must print `robot-arch-eight-20261105`. If it is
+`undefined`, you are still loading the old scene. The build stamp and
+versioned module/CSS URLs prevent a cached older JS module from silently
+surviving a new HTML fetch. The version query itself is part of the
+test links; no homepage modification is required.
+
+### Local WSL playtest (no Windows deployment)
+
+```bash
+git clone --branch feature/robot-arch-figure-eight-races --single-branch \
+  https://github.com/mdt733/meadow.git ~/meadow-pr4-preview
+cd ~/meadow-pr4-preview
+git log -1 --format='%h %s'
+python3 -m http.server 8000 --bind 127.0.0.1
+```
+
+Open `http://localhost:8000/meadow.html?emu-arch-flight-demo=forward`
+or `http://localhost:8000/meadow.html?race-demo=red`. For an existing
+checkout, use `git fetch origin` and explicitly switch to the feature
+branch; `git pull` while on `main` **will not** bring the draft in.
+
+## Post-merge production deployment (run on the Windows nginx server)
+
+**Only run this production recipe AFTER PR #4 is merged into `main`.**
+For draft testing use the separate preview recipe above. This production
+recipe intentionally reads `main`, which still holds the old scene until
+merge. The figure-eight flight code is introduced by draft PR #4. The existing
 server's private PHP homepage must not be overwritten.
 
 The script below requires PowerShell and outbound HTTPS but **not Git** on
