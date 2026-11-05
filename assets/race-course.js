@@ -67,8 +67,17 @@ export function makeFigureEightCourse({index,start,direction,height,finishRadius
  }
  // The first ring is forward from the arch, never behind its entry.
  // An arrival from the other direction uses a longer curved approach.
- bezier(start,add(start,mul(f,reverse?10:5.5)),
-  sub(first,mul(inT,reverse?13:5.5)),first,125,false);
+ if(reverse){
+  // An entrance from the opposite side first gets a full straight
+  // outbound run. Only then does the connector turn toward the shared
+  // low/high tree crossings; neither of its first two rings can hide
+  // behind the player during the U-turn.
+  const lead=add(start,mul(f,17));
+  bezier(start,add(start,mul(f,5)),sub(lead,mul(f,5)),lead,90,false);
+  bezier(lead,add(lead,mul(f,12)),sub(first,mul(inT,14)),first,125,false);
+ }else{
+  bezier(start,add(start,mul(f,5.5)),sub(first,mul(inT,5.5)),first,125,false);
+ }
  const samples=1250;
  for(let i=0;i<=samples;i++){
   const u=entry+sign*TAU*i/samples;
