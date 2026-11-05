@@ -1160,7 +1160,7 @@ async function startRobotRide(){
  if(emuLoading||emuRiding)return;
  if(!flight.active)beginFlight();
  if(emu){mountEmu();return;}
- emuLoading=true;$('emuGatePrompt').hidden=true;$('emuLoader').hidden=false;
+ emuLoading=true;$('archMenu').hidden=true;$('emuLoader').hidden=false;
  $('emuProgress').value=0;
  $('emuDownloadDetail').textContent='0.0 / ≈12 MB · 0%';
  $('emuLoadStatus').textContent='Preparing the optional download…';
