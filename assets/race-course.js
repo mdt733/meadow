@@ -1,52 +1,37 @@
-// Geometrically continuous figure-eight flight courses, separate from WebGL.
-// Two centre crossings near the apple tree: first low (u=0), then above
-// its canopy (u=PI). The red course adds turns and climbs, never teleports.
+// One original arch opens a choice menu; all courses start there.
+// Clockwise/anticlockwise traversal matches the direction of entry.
 const TAU=Math.PI*2,clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const add=(a,b)=>a.map((x,i)=>x+b[i]),sub=(a,b)=>a.map((x,i)=>x-b[i]);
 const mul=(a,s)=>a.map(x=>x*s),length=a=>Math.hypot(...a);
 const norm=a=>mul(a,1/Math.max(1e-8,length(a)));
 export const RACE_TYPES=Object.freeze([
- {name:'Green',color:[.40,.94,.49],radius:1.90,step:5.8},
- {name:'Orange',color:[1,.63,.23],radius:1.65,step:5.0},
- {name:'Red',color:[1,.30,.35],radius:1.42,step:4.35}
+ {name:'Easy',color:[.40,.94,.49],radius:1.90,step:5.8},
+ {name:'Medium',color:[1,.63,.23],radius:1.65,step:5.0},
+ {name:'Hard',color:[1,.30,.35],radius:1.42,step:4.35}
 ]);
-// 59m side-to-side: twice the previous 29.4m width. The two vertical
-// centre crossings still meet beside the tree, and the seam stays
-// within 9m of the actual stone race arch instead of moving away from it.
-export const EIGHT={centerX:3.5,centerZ:-.9,spanX:29.4,spanZ:12.7,entry:-Math.PI/4};
-
-export function raceFigurePoint(index,u,height){
+// Nearly 59 metres between the farthest outer bends.
+export const EIGHT={centerX:3.5,centerZ:-.9,spanX:29.4,spanZ:12.7,entry:-Math.PI/3};
+const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
+export function raceFigurePoint(index,u,height,reverse=false){
  if(!Number.isInteger(index)||index<0||index>=RACE_TYPES.length)
   throw new RangeError('Unknown race difficulty');
- const x0=EIGHT.centerX,z0=EIGHT.centerZ;
- // Periodic wiggles vanish at BOTH centre crossings, so the low and high
- // passes really cross the same world X/Z close to the apple tree.
+ const {centerX:x0,centerZ:z0,spanX,spanZ,entry}=EIGHT;
  const variation=[.22,.80,1.55][index],window=Math.sin(u)**2;
  const ripple=window*variation*(Math.sin(3*u+.28*index)+.4*Math.sin(5*u-.35*index));
- const x=x0-EIGHT.spanX*Math.sin(u)+ripple*.36*Math.cos(u);
- const z=z0+EIGHT.spanZ*Math.sin(2*u)+ripple*.72;
- const low=height(x0,z0)+2.35;
- const high=low+[5.9,7.5,8.8][index];
- const sky=low+(high-low)*(1-Math.cos(u))*.5;
+ const x=x0-spanX*Math.sin(u)+ripple*.36*Math.cos(u);
+ const z=z0+spanZ*Math.sin(2*u)+ripple*.72;
+ const low=height(x0,z0)+2.35,high=low+[5.9,7.5,8.8][index];
+ // Low first, high second, whichever way we traverse the loop.
+ // The climb is spread over half a complete lap; not dumped into the
+ // first couple of rings when the butterfly has just left the arch.
+ const raw=reverse?(u-entry)/TAU:(entry-u)/TAU;
+ const phase=((raw%1)+1)%1;
+ const lowAt=reverse?1/6:1/3,highAt=reverse?2/3:5/6;
+ const lift=phase<=lowAt?0:phase<=highAt?
+  ease((phase-lowAt)/(highAt-lowAt)):1-ease((phase-highAt)/(1-highAt));
  const verticalNoise=window*[.15,.55,1.05][index]*
    (Math.sin(3*u+.25*index)+.30*Math.sin(5*u));
- // Harder runs require more effort, but all ring centres have at least
- // 1.65m of real terrain clearance. No height snapping of the butterfly.
- return [x,Math.max(height(x,z)+1.65,sky+verticalNoise),z];
-}
-
-export function raceChoices(start,direction,height){
- const f=norm([direction[0],0,direction[2]]);
- const right=norm([-f[2],0,f[0]]);
- const inward=norm([-start[0],0,-start[2]]);
- return RACE_TYPES.map((type,i)=>{
-  // 16.5m downrange (old: 9.2m), with a gentle 4.5m inward bend so even
-  // the outer colour stays within the richly detailed 31m meadow.
-  const x=start[0]+f[0]*16.5+right[0]*(i-1)*5.3+inward[0]*4.5;
-  const z=start[2]+f[2]*16.5+right[2]*(i-1)*5.3+inward[2]*4.5;
-  return {name:type.name,color:type.color,radius:1.70,
-   pos:[x,Math.max(height(x,z)+1.85,start[1]+.10),z],normal:f};
- });
+ return [x,Math.max(height(x,z)+1.65,low+(high-low)*lift+verticalNoise),z];
 }
 function tangent(point,u){return norm(sub(point(u+.002),point(u-.002)))}
 function cubic(a,b,c,d,t){
@@ -57,13 +42,19 @@ function cubicDerivative(a,b,c,d,t){
  const w=1-t;
  return norm(add(add(mul(sub(b,a),3*w*w),mul(sub(c,b),6*w*t)),mul(sub(d,c),3*t*t)));
 }
-
-export function makeFigureEightCourse({index,choice,start,direction,height,finishRadius}){
- if(!choice||typeof height!=='function')throw new Error('A selected ring and real terrain are required');
+export function makeFigureEightCourse({index,start,direction,height,finishRadius}){
+ if(!start||typeof height!=='function')throw new Error('An arch and real terrain are required');
  const kind=RACE_TYPES[index],f=norm([direction[0],0,direction[2]]);
- const at=u=>raceFigurePoint(index,u,height),entry=EIGHT.entry,exit=entry+TAU;
+ if(!kind)throw new RangeError('Unknown race difficulty');
+ // Arch is approximately facing (.73,0,.68). Reversing the loop
+ // traversal makes its opening tangent match either entry direction.
+ const canonical=norm([.73,0,.68]);
+ const reverse=f[0]*canonical[0]+f[2]*canonical[2]<0;
+ const entry=EIGHT.entry,exit=entry+(reverse?TAU:-TAU);
+ const sign=reverse?1:-1;
+ const at=u=>raceFigurePoint(index,u,height,reverse);
  const first=at(entry),last=at(exit);
- const inT=tangent(at,entry),outT=tangent(at,exit);
+ const inT=mul(tangent(at,entry),sign),outT=mul(tangent(at,exit),sign);
  const points=[],directions=[],distance=[0];
  function append(p,t){
   if(points.length)distance.push(distance[distance.length-1]+length(sub(p,points[points.length-1])));
@@ -71,29 +62,23 @@ export function makeFigureEightCourse({index,choice,start,direction,height,finis
  }
  function bezier(a,b,c,d,steps,includeEnd){
   for(let i=0;i<steps+(includeEnd?1:0);i++){
-   const t=i/steps;
-   append(cubic(a,b,c,d,t),cubicDerivative(a,b,c,d,t));
+   const t=i/steps;append(cubic(a,b,c,d,t),cubicDerivative(a,b,c,d,t));
   }
  }
- // Approach: keep the selected colour gate's outbound heading, begin
- // gaining altitude early, then arc into the widened lobe without a
- // snap, sharp climb or reversing the butterfly's heading.
- bezier(choice.pos,add(add(choice.pos,mul(f,6)),[0,2,0]),
-  sub(first,mul(inT,6)),first,125,false);
+ // The first ring is forward from the arch, never behind its entry.
+ // An arrival from the other direction uses a longer curved approach.
+ bezier(start,add(start,mul(f,reverse?10:5.5)),
+  sub(first,mul(inT,reverse?13:5.5)),first,125,false);
  const samples=1250;
  for(let i=0;i<=samples;i++){
-  const u=entry+TAU*i/samples;
-  append(at(u),tangent(at,u));
+  const u=entry+sign*TAU*i/samples;
+  append(at(u),mul(tangent(at,u),sign));
  }
- // Return: loop behind the REAL arch before making a level, forward
- // approach. With a wider eight, aiming directly back at the arch would
- // put the penultimate ring in FRONT of the finish and invite a U-turn.
- bezier(last,add(last,mul(outT,10)),
+ // Swing behind the arch and finish through its real crossing plane,
+ // heading in the same direction as the butterfly originally entered.
+ bezier(last,add(last,mul(outT,reverse?12:10)),
   sub(start,mul(f,12)),start,125,true);
- const total=distance[distance.length-1],count=Math.max(18,Math.round(total/kind.step));
- // Guarantee a real checkpoint at EACH shared-X/Z tree crossing. Regular
- // arc-length ring spacing alone can otherwise miss the defining feature
- // of a figure eight by a few metres.
+ const total=distance.at(-1),count=Math.max(18,Math.round(total/kind.step));
  function nearestDistance(pos){
   let closest=Infinity,idx=0;
   for(let i=0;i<points.length;i++){
@@ -102,27 +87,28 @@ export function makeFigureEightCourse({index,choice,start,direction,height,finis
   }
   return distance[idx];
  }
+ const lowU=reverse?0:-Math.PI,highU=reverse?Math.PI:-2*Math.PI;
  const mandatory=[
-  {milestone:'low',pos:at(0),normal:tangent(at,0)},
-  {milestone:'high',pos:at(Math.PI),normal:tangent(at,Math.PI)}
+  {milestone:'low',pos:at(lowU),normal:mul(tangent(at,lowU),sign)},
+  {milestone:'high',pos:at(highU),normal:mul(tangent(at,highU),sign)}
  ].map(m=>({...m,d:nearestDistance(m.pos)}));
  const ringDistances=Array.from({length:count-1},(_,k)=>total*(k+1)/count)
   .filter(d=>mandatory.every(m=>Math.abs(d-m.d)>kind.step*.42));
  const scheduled=[...ringDistances,...mandatory.map(m=>m.d),total].sort((a,b)=>a-b);
  const gates=[];let cursor=1;
  for(let k=0;k<scheduled.length;k++){
-  const d=scheduled[k],last=k===scheduled.length-1;
+  const d=scheduled[k],isFinish=k===scheduled.length-1;
   const milestone=mandatory.find(m=>Math.abs(d-m.d)<1e-5);
   while(cursor<distance.length-1&&distance[cursor]<d)cursor++;
   const a=cursor-1,b=cursor,t=clamp((d-distance[a])/Math.max(1e-8,distance[b]-distance[a]),0,1);
-  const pos=last?[...start]:milestone?[...milestone.pos]:
+  const pos=isFinish?[...start]:milestone?[...milestone.pos]:
    add(mul(points[a],1-t),mul(points[b],t));
-  const normal=last?f:milestone?[...milestone.normal]:
+  const normal=isFinish?f:milestone?[...milestone.normal]:
    norm(add(mul(directions[a],1-t),mul(directions[b],t)));
   gates.push({pos,normal,color:kind.color,
-   radius:last?finishRadius:kind.radius,
+   radius:isFinish?finishRadius:kind.radius,
    milestone:milestone?.milestone||null,
-   boost:k%4===2&&!last&&!milestone});
+   boost:k%4===2&&!isFinish&&!milestone});
  }
  return gates;
 }
