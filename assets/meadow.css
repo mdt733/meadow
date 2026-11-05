@@ -55,22 +55,32 @@ html.tilt-steering .fly-joystick{display:none}
 @media(pointer:fine){#flySensor,#flyRecenter,#flyInvert{display:none!important}}
 @media(pointer:coarse) and (orientation:landscape) and (max-height:520px){.fly-tools{top:max(5px,env(safe-area-inset-top));right:max(7px,env(safe-area-inset-right));width:112px;gap:3px}.fly-tools button,.fly-tools a{min-height:29px;padding:4px 6px;font-size:10px}.fly-top{max-width:calc(100vw - 145px)}.fly-touch{bottom:max(6px,env(safe-area-inset-bottom))}.fly-flap{height:63px;width:84px}}
 
-/* The arch encounter pauses the butterfly (not the meadow's animation)
-   until the visitor explicitly opts into the ~12 MB MuJoCo download. */
-#emuGatePrompt[hidden],#emuLoader[hidden],#emuLeave[hidden]{display:none!important}
-#emuGatePrompt{position:fixed;inset:0;z-index:17;display:grid;place-items:center;
- padding:20px;background:#10241b75;backdrop-filter:blur(3px);pointer-events:auto}
-.emu-gate-card{max-width:min(440px,94vw);text-align:center;border:1px solid #f9f2cfa9;
- background:#15372fe9;box-shadow:0 20px 80px #061e19bb;border-radius:23px;padding:24px 28px;
- color:#fffbea;text-shadow:0 1px 8px #071d14aa}
-.emu-gate-symbol{display:block;font-size:34px;margin-bottom:5px}
-.emu-gate-card h2{font:normal 33px/1.1 Georgia,serif;margin:0 0 11px;color:#ffe6a3}
-.emu-gate-card p{font:15px/1.5 system-ui;margin:0 0 20px}
-.emu-gate-card button{display:block;width:100%;cursor:pointer;touch-action:manipulation;
- border-radius:14px;padding:12px 18px;font:700 15px/1.3 system-ui}
-#emuGateWalk{border:1px solid #fff7d5;background:#eaf9dd;color:#285c43}
-#emuGateContinue{margin-top:9px;border:1px solid #d4e5c776;color:#f0f7e8;background:#31564b9c}
-@media(max-height:490px){.emu-gate-card{padding:13px 19px}.emu-gate-card h2{font-size:24px}.emu-gate-card p{margin-bottom:9px}}
+/* Only the original stone arch launches a four-choice adventure.
+   The entire Meadow simulation clock is frozen while the dialog is open. */
+#archMenu[hidden],#emuLoader[hidden],#emuLeave[hidden]{display:none!important}
+#archMenu{position:fixed;inset:0;z-index:17;display:grid;place-items:center;
+ padding:14px;background:#10241b84;backdrop-filter:blur(3px);pointer-events:auto}
+.arch-menu-card{width:min(440px,94vw);text-align:center;border:1px solid #f9f2cfa9;
+ background:#15372ff2;box-shadow:0 20px 80px #061e19bb;border-radius:23px;padding:20px 24px;
+ color:#fffbea;text-shadow:0 1px 8px #071d14aa;max-height:96vh;overflow:auto}
+.arch-menu-symbol{display:block;font-size:22px;margin-bottom:1px;color:#ffe2a2}
+.arch-menu-card h2{font:normal 30px/1.1 Georgia,serif;margin:0 0 9px;color:#ffe6a3}
+.arch-menu-card p{font:13px/1.45 system-ui;margin:0 0 14px}
+.arch-menu-options{display:grid;gap:7px}
+.arch-menu-options button{width:100%;min-height:46px;text-align:left;cursor:pointer;touch-action:manipulation;
+ border:1px solid #d9e4c27a;border-radius:11px;padding:8px 14px;color:#fffbea;
+ background:#31564baf;font:700 15px/1.2 system-ui}
+.arch-menu-options button:focus-visible{outline:2px solid #ffe39a;outline-offset:2px}
+.arch-menu-options button:hover{background:#416c5abf}
+.arch-difficulty small{display:block;font:400 11px/1.4 system-ui;color:#d7e8dc;margin:2px 0 0 20px}
+.arch-menu-dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:7px}
+.arch-menu-dot.easy{background:#72dc7c}.arch-menu-dot.medium{background:#ffb963}
+.arch-menu-dot.hard{background:#ff6f72}
+#archWalk{border-color:#fff7d5;background:#eaf9dd;color:#285c43;text-align:center}
+.arch-menu-card .arch-menu-skip{margin:9px 0 0;font:11px/1.4 system-ui;color:#d4e5cf}
+@media(max-height:520px){.arch-menu-card{padding:10px 16px}.arch-menu-card h2{font-size:23px}
+ .arch-menu-card p{margin-bottom:7px}.arch-menu-options{gap:5px}
+ .arch-menu-options button{min-height:36px;padding:5px 11px}}
 #emuLoader{position:fixed;z-index:20;left:50%;top:35%;transform:translateX(-50%);width:min(300px,85vw);
  padding:18px 22px;border-radius:18px;background:#163631ea;border:1px solid #a8dfb477;color:#f0ffe7;
  box-shadow:0 16px 60px #061b1bd0;font:13px/1.55 system-ui;text-align:center}
