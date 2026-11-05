@@ -57,7 +57,10 @@ export function makeFigureEightCourse({index,start,direction,height,finishRadius
  const inT=mul(tangent(at,entry),sign),outT=mul(tangent(at,exit),sign);
  const points=[],directions=[],distance=[0];
  function append(p,t){
-  if(points.length)distance.push(distance[distance.length-1]+length(sub(p,points[points.length-1])));
+  if(points.length){const step=length(sub(p,points[points.length-1]));
+   if(step<1e-7)return;
+   distance.push(distance[distance.length-1]+step);
+  }
   points.push(p);directions.push(norm(t));
  }
  function bezier(a,b,c,d,steps,includeEnd){
@@ -65,21 +68,50 @@ export function makeFigureEightCourse({index,start,direction,height,finishRadius
    const t=i/steps;append(cubic(a,b,c,d,t),cubicDerivative(a,b,c,d,t));
   }
  }
+ // Arc-line-arc returns heading in the SAME direction as it entered,
+ // with two generous radii rather than a 180-degree flip between rings.
+ function roundedConnection(from,to,heading){
+  const side=norm([-heading[2],0,heading[0]]),delta=sub(to,from);
+  const sTarget=delta[0]*heading[0]+delta[2]*heading[2];
+  const qTarget=delta[0]*side[0]+delta[2]*side[2];
+  if(sTarget>=-1)throw new Error('Invalid race turnaround geometry');
+  const radius=10,outside=radius*2,lastRadius=(outside-qTarget)/2;
+  if(lastRadius<5)throw new Error('Unsafe race turnaround radius');
+  const total=Math.PI*(radius+lastRadius)-sTarget;
+  const startClear=from[1]-height(from[0],from[2]);
+  const loc=(ss,qq,t)=>{
+   const x=from[0]+heading[0]*ss+side[0]*qq;
+   const z=from[2]+heading[2]*ss+side[2]*qq;
+   const safe=startClear<2.2?startClear+(2.2-startClear)*ease(t/.11):2.2;
+   return [x,Math.max(height(x,z)+safe,from[1]+(to[1]-from[1])*ease(t)),z];
+  };
+  const tangent=(ds,dq)=>norm(add(mul(heading,ds),mul(side,dq)));
+  const n1=Math.ceil(Math.PI*radius/.25);
+  for(let i=0;i<=n1;i++){
+   const a=-Math.PI/2+Math.PI*i/n1;
+   append(loc(radius*Math.cos(a),radius*(1+Math.sin(a)),
+    radius*(a+Math.PI/2)/total),tangent(-radius*Math.sin(a),radius*Math.cos(a)));
+  }
+  const n2=Math.ceil(-sTarget/.25);
+  for(let i=1;i<=n2;i++){
+   const u=i/n2;
+   append(loc(sTarget*u,outside,(Math.PI*radius-sTarget*u)/total),mul(heading,-1));
+  }
+  const center=(outside+qTarget)/2,n3=Math.ceil(Math.PI*lastRadius/.25);
+  for(let i=1;i<=n3;i++){
+   const a=Math.PI/2+Math.PI*i/n3;
+   const t=(Math.PI*radius-sTarget+lastRadius*(a-Math.PI/2))/total;
+   append(i===n3?[...to]:
+    loc(sTarget+lastRadius*Math.cos(a),center+lastRadius*Math.sin(a),t),
+    tangent(-lastRadius*Math.sin(a),lastRadius*Math.cos(a)));
+  }
+ }
  // The first ring is forward from the arch, never behind its entry.
  // An arrival from the other direction uses a longer curved approach.
  if(reverse){
-  // An entrance from the opposite side first gets a full straight
-  // outbound run. Only then does the connector turn toward the shared
-  // low/high tree crossings; neither of its first two rings can hide
-  // behind the player during the U-turn.
-  const lead=add(start,mul(f,17));
-  lead[1]=Math.max(start[1]+1.8,height(lead[0],lead[2])+2.2);
-  const early=add(start,mul(f,5));
-  early[1]=Math.max(start[1]+1.0,height(early[0],early[2])+1.95);
-  const nearLead=sub(lead,mul(f,5));
-  nearLead[1]=Math.max(start[1]+1.6,height(nearLead[0],nearLead[2])+2.2);
-  bezier(start,early,nearLead,lead,90,false);
-  bezier(lead,add(lead,mul(f,12)),sub(first,mul(inT,14)),first,125,false);
+  // The loop is behind a reverse arch entry. Round the approach in
+  // physically navigable broad turns before joining its tangent.
+  roundedConnection(start,first,f);
  }else{
   bezier(start,add(start,mul(f,5.5)),sub(first,mul(inT,5.5)),first,125,false);
  }
@@ -90,16 +122,19 @@ export function makeFigureEightCourse({index,start,direction,height,finishRadius
  }
  // Swing behind the arch and finish through its real crossing plane,
  // heading in the same direction as the butterfly originally entered.
- const behind=add(start,mul(f,-14));
- behind[1]=Math.max(start[1]+1.25,height(behind[0],behind[2])+2.15);
- bezier(last,add(last,mul(outT,reverse?12:10)),
-  sub(behind,mul(f,9)),behind,120,false);
- // Stay comfortably above the ground until the actual finish ring,
- // then descend smoothly through the original stone arch.
- const align=sub(start,mul(f,5));
- align[1]=Math.max(start[1]+1.0,height(align[0],align[2])+1.95);
- bezier(behind,add(behind,mul(f,4.5)),
-  align,start,55,true);
+ if(reverse){
+  // The reverse loop naturally faces toward the arch at its seam.
+  // A shallow cubic returns directly without any hairpin.
+  bezier(last,add(last,mul(f,5.5)),
+   sub(start,mul(f,6)),start,145,true);
+ }else{
+  const behind=add(start,mul(f,-14));
+  behind[1]=Math.max(start[1]+1.25,height(behind[0],behind[2])+2.15);
+  roundedConnection(last,behind,f);
+  const align=sub(start,mul(f,5));
+  align[1]=Math.max(start[1]+1.0,height(align[0],align[2])+1.95);
+  bezier(behind,add(behind,mul(f,4.5)),align,start,55,true);
+ }
  const total=distance.at(-1),count=Math.max(18,Math.round(total/kind.step));
  function nearestDistance(pos){
   let closest=Infinity,idx=0;
