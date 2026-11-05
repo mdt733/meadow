@@ -22,10 +22,10 @@ for(const [asset,path] of [
  });
 }
 new vm.Script(read('../ground-lizard.js'),{filename:'ground-lizard.js'});
-if(!html.includes('type="module" src="assets/meadow.js"'))
+if(!/type="module"\s+src="assets\/meadow\.js(?:\?[^\"]+)?"/.test(html))
  throw Error('Meadow scene ES module is not loaded');
 if(!read('../assets/meadow.js').includes("import('../ground-lizard.js')"))
  throw Error('Lizard must load after the Meadow world bridge is initialised');
-if(!html.includes('href="assets/meadow.css"'))
+if(!/href="assets\/meadow\.css(?:\?[^\"]+)?"/.test(html))
  throw Error('Meadow stylesheet is not loaded');
 console.log('Parsed Meadow HTML, three ES modules, lizard and CSS references.');
