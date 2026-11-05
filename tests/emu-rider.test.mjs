@@ -84,8 +84,8 @@ test('all ≈12 MB of robot assets are explicit, accounted for and opt-in',()=>{
  assert.match(html,/Walk the robot <span class="emu-download-note">\(≈12 MB download\)<\/span>/);
  assert.match(html,/id="emuDownloadDetail"/);
  assert.match(html,/id="emuProgress"/);
- assert.match(html,/id="emuGateWalk"/);
- assert.match(scene,/if\(enterEmuGate\(previous,next\)\)break/);
+ assert.match(html,/id="archWalk"/);
+ assert.match(scene,/if\(raceCrossing\(previous,next\)\)break/);
  assert.match(loader,/response\.body\?\.getReader/);
  assert.match(loader,/report\(value\.byteLength,asset\.stage\)/);
  assert.match(loader,/wasmBinary=await downloadBytes/);
@@ -98,25 +98,22 @@ test('all ≈12 MB of robot assets are explicit, accounted for and opt-in',()=>{
  assert.match(upstream,/loadMujoco\(\{/);
  assert.match(adapter,/EmuPhysicsCore\.create\(bundle,wasmBinary\)/);
 });
-test('robot is visibly seated under a second arch, not hidden on a tiny rock',()=>{
- const scene=read('../assets/meadow.js');
- const markup=read('../meadow.html');
- assert.match(scene,/EMU_ARCH_X=18\.5,EMU_ARCH_Z=16\.8/);
- assert.match(scene,/function buildRobotArch\(/);
- assert.match(scene,/function enterEmuGate\(previous,next\)/);
- assert.match(scene,/throughGate\(previous,next,gate\)/);
+test('one original stone arch opens four choices and no new scene sculpture',()=>{
+ const scene=read('../assets/meadow.js'),html=read('../meadow.html');
+ assert.match(scene,/function buildRaceArch\(/);
+ assert.match(scene,/race\.mode='menu'/);
  assert.match(scene,/flight\.gatePaused=true/);
- assert.match(scene,/function leaveEmuGate\(/);
- assert.match(markup,/id="emuGatePrompt"/);
- assert.match(markup,/id="emuGateContinue"/);
- assert.doesNotMatch(scene,/addEmuCubeRock|EMU_ROCK|emuWake/);
+ assert.match(scene,/function leaveArchMenu\(/);
+ for(const button of ['archEasy','archMedium','archHard','archWalk'])
+  assert.ok(html.includes('id="'+button+'"'),'missing '+button);
+ assert.doesNotMatch(scene,/buildRobotArch|EMU_ARCH_X|EMU_ROCK|addEmuCubeRock|enterEmuGate/);
+ assert.doesNotMatch(html,/emuGatePrompt|emuGateContinue/);
 });
-
 test('public walk button and fly-through arch share one lazy robot loader',()=>{
  const html=read('../meadow.html'),scene=read('../assets/meadow.js');
  assert.match(html,/id="emuStart"/);
  assert.match(html,/id="flyStart"/);
- assert.match(scene,/buildRobotArch\(\)/);
+ assert.match(scene,/\$\('archWalk'\)\.onclick=\(\)=>startRobotRide\(\)/);
  assert.match(scene,/async function startRobotRide\(\)/);
  assert.match(scene,/\$\('emuStart'\)\.onclick=startRobotRide/);
  assert.match(scene,/module\.loadEmu/);
