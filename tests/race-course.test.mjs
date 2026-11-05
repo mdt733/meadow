@@ -75,3 +75,38 @@ test('every difficulty points ahead of the butterfly after either arch entrance'
    ': '+gates.length+' gates, '+lengthM.toFixed(1)+' m, uphill '+(maxGrade*100).toFixed(1)+'%');
  }
 });
+
+test('EVERY checkpoint is traversable forwards in sequence, without reverse-facing gates',()=>{
+ const dot=(a,b)=>a.reduce((sum,v,j)=>sum+v*b[j],0);
+ const diff=(a,b)=>a.map((v,j)=>v-b[j]);
+ const unit=a=>a.map(v=>v/Math.hypot(...a));
+ const mid=(a,b)=>a.map((v,j)=>(v+b[j])/2);
+ // Same signed-plane sweep and aperture physics as Meadow's WebGL game.
+ function crosses(from,to,gate){
+  const before=dot(diff(from,gate.pos),gate.normal);
+  const after=dot(diff(to,gate.pos),gate.normal);
+  if(before>0||after<0||after-before<1e-5)return false;
+  const t=-before/(after-before);
+  const crossing=from.map((v,j)=>v+(to[j]-v)*t);
+  return Math.hypot(...diff(crossing,gate.pos))<=gate.radius;
+ }
+ for(const reverse of [false,true])for(let i=0;i<3;i++){
+  const dir=canonical.map(v=>reverse?-v:v);
+  const gates=makeFigureEightCourse({index:i,start:arch,direction:dir,height,finishRadius:.64});
+  for(let k=0;k<gates.length;k++){
+   const gate=gates[k],before=k?gates[k-1].pos:arch;
+   const after=k+1<gates.length?gates[k+1].pos:
+    gate.pos.map((v,j)=>v+dir[j]*4);
+   const incoming=unit(diff(gate.pos,before));
+   const outgoing=unit(diff(after,gate.pos));
+   const dotIn=dot(gate.normal,incoming),dotOut=dot(gate.normal,outgoing);
+   const turn=dot(incoming,outgoing);
+   const context=`${RACE_TYPES[i].name} ${reverse?'reverse':'forward'} gate ${k}/${gates.length}`;
+   assert.ok(dotIn>.80,context+': entry plane is facing backwards ('+dotIn.toFixed(2)+')');
+   assert.ok(dotOut>.80,context+': next ring requires reversing ('+dotOut.toFixed(2)+')');
+   assert.ok(turn>.68,context+': course makes an unreasonable one-ring turn');
+   assert.ok(crosses(mid(before,gate.pos),mid(gate.pos,after),gate),
+    context+': flying between ring centres cannot cross this ring forwards');
+  }
+ }
+});
