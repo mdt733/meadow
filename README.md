@@ -82,7 +82,7 @@ On mobile, **Recenter** makes the current phone angle neutral. Motion sensing re
 
 ## Hidden race
 
-Find the first stone arch beyond the tree. Flying through it reveals green, orange and red colour gates, now lower and farther downrange so you have time to choose. Each course is a big 3-D **figure eight**: the first centre crossing skims near the tree and the second passes overhead, with extra noise and steeper climbs on higher difficulties. The butterfly gets a race-only physical wingbeat upgrade — you still need to flap, carry speed and manage stamina. The race ends through the original arch. Skipping one checkpoint costs five seconds, while a 30-second gap without progress ends the attempt. Personal bests are stored only in the browser with `localStorage`.
+Find the first stone arch beyond the tree. Flying through it reveals green, orange and red colour gates, now lower and farther downrange so you have time to choose. Each course is a wide 3-D **figure eight** with about **59 m of side-to-side span** (twice the original outer-lobe width): the first centre crossing skims near the tree and the second passes overhead, with extra noise and steeper climbs on higher difficulties. The course links begin close to the race arch and the last checkpoints curve behind it for a forward, level finish through the arch. The butterfly gets a race-only physical wingbeat upgrade — you still need to flap, carry speed and manage stamina. The race ends through the original arch. Skipping one checkpoint costs five seconds, while a 30-second gap without progress ends the attempt. Personal bests are stored only in the browser with `localStorage`.
 
 ## Notes
 
