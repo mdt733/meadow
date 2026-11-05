@@ -73,7 +73,12 @@ export function makeFigureEightCourse({index,start,direction,height,finishRadius
   // low/high tree crossings; neither of its first two rings can hide
   // behind the player during the U-turn.
   const lead=add(start,mul(f,17));
-  bezier(start,add(start,mul(f,5)),sub(lead,mul(f,5)),lead,90,false);
+  lead[1]=Math.max(start[1]+1.8,height(lead[0],lead[2])+2.2);
+  const early=add(start,mul(f,5));
+  early[1]=Math.max(start[1]+1.0,height(early[0],early[2])+1.95);
+  const nearLead=sub(lead,mul(f,5));
+  nearLead[1]=Math.max(start[1]+1.6,height(nearLead[0],nearLead[2])+2.2);
+  bezier(start,early,nearLead,lead,90,false);
   bezier(lead,add(lead,mul(f,12)),sub(first,mul(inT,14)),first,125,false);
  }else{
   bezier(start,add(start,mul(f,5.5)),sub(first,mul(inT,5.5)),first,125,false);
