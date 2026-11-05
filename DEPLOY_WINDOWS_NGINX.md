@@ -57,7 +57,7 @@ or **Wake EMU** don't fetch the heavy actor and WASM files.
 
 **Important:** PR #4 has **not** been merged into `main`. The post-merge
 deployment recipe below deliberately downloads `main`, so running it now
-gets the OLD race and NO robot arch. The new `assets/race-course.js` does not
+gets the OLD race and NO four-option arch menu. The new `assets/race-course.js` does not
 exist on `main`; an attempted 12-file deployment from `main` fails during
 staging and leaves the previous site alone.
 
@@ -70,7 +70,7 @@ or `hangar/` at the web root.
 ```powershell
 $ErrorActionPreference = 'Stop'
 $branch = 'feature/robot-arch-figure-eight-races'
-$build = 'wide-eight-20261105'
+$build = 'single-arch-eight-20261105'
 $base = "https://raw.githubusercontent.com/mdt733/meadow/$branch"
 $root = 'C:\nginx\html\meadow-preview'
 $stage = Join-Path $env:TEMP ('meadow-pr4-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -103,12 +103,14 @@ if (-not $html.Contains("meadow-build`" content=`"$build")) {
   throw 'Wrong Meadow HTML version: refusing to install old scene.'
 }
 if (-not $scene.Contains("window.__meadowBuild='$build'") -or
-    -not $scene.Contains('buildRobotArch()') -or
+    -not $scene.Contains('function buildRaceArch()') -or
+    -not $scene.Contains("race.mode='menu'") -or
+    -not $scene.Contains("$('archWalk').onclick") -or
     -not $scene.Contains('makeFigureEightCourse') -or
     -not $course.Contains('export function raceFigurePoint') -or
     -not $course.Contains('spanX:29.4') -or
     -not $physics.Contains('export const RACE_FLY')) {
-  throw 'Missing robot arch, figure eight or race flight physics: refusing install.'
+  throw 'Missing single arch menu, figure eight or race physics: refusing install.'
 }
 $expected = @{
   'emu/champion.emupolicy' = 886002
@@ -131,19 +133,18 @@ foreach ($rel in $files) {
   Copy-Item -LiteralPath (Join-Path $stage $rel) -Destination $target -Force
 }
 Write-Host "Preview build $build installed from $branch (not main)."
-Write-Host 'Open https://mdt733.ddns.net/meadow-preview/meadow.html?emu-arch-flight-demo=forward'
+Write-Host 'Open https://mdt733.ddns.net/meadow-preview/meadow.html?arch-flight-demo=forward'
 Write-Host 'Or https://mdt733.ddns.net/meadow-preview/meadow.html?race-demo=red'
 ```
 
 Use these **standalone preview links** rather than your PHP homepage:
 
-- **EMU arch:** `https://mdt733.ddns.net/meadow-preview/meadow.html?emu-arch-flight-demo=forward`
+- **Four-option arch:** `https://mdt733.ddns.net/meadow-preview/meadow.html?arch-flight-demo=forward`
 - **Red figure eight:** `https://mdt733.ddns.net/meadow-preview/meadow.html?race-demo=red`
 - **Normal Meadow:** `https://mdt733.ddns.net/meadow-preview/meadow.html`
 
-The first fly-through should display **You found EMU!**; Red should say
-**Red figure eight**. In the browser developer console,
-`window.__meadowBuild` must print `wide-eight-20261105`. If it is
+Flying through the original arch should freeze the scene and show **Easy, Medium, Hard, Walk the robot**. Red race demo (legacy alias) should say **Hard figure eight**. In the browser developer console,
+`window.__meadowBuild` must print `single-arch-eight-20261105`. If it is
 `undefined`, you are still loading the old scene. The build stamp and
 versioned module/CSS URLs prevent a cached older JS module from silently
 surviving a new HTML fetch. The version query itself is part of the
@@ -159,7 +160,7 @@ git log -1 --format='%h %s'
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Open `http://localhost:8000/meadow.html?emu-arch-flight-demo=forward`
+Open `http://localhost:8000/meadow.html?arch-flight-demo=forward`
 or `http://localhost:8000/meadow.html?race-demo=red`. For an existing
 checkout, use `git fetch origin` and explicitly switch to the feature
 branch; `git pull` while on `main` **will not** bring the draft in.
@@ -252,7 +253,7 @@ so the exact MIME type is not required for streaming compilation.
 ## Before merging / publishing
 
 - The original EMU PR #1 and headless cleanup PR #2 are already merged.
-  The new robot arch and race update remain **draft PR #4**, awaiting approval.
+  The one-arch menu and race update remain **draft PR #4**, awaiting approval.
 - Run the repository's browser checks (optional downloads, butterfly-only
   zero robot downloads, real policy/MuJoCo controls, rock entry, camera).
 - Make sure the committed `emu/physics/dist/` bundle and WASM are present:
