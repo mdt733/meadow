@@ -11,9 +11,9 @@ A small, living WebGL landscape: rolling grassland, a procedural apple tree and 
 - Background butterflies exploring flowers and canopy perches.
 - Ground lizard with articulated movement and hunting behaviour.
 - Playable butterfly flight with flapping, gliding, nectar, landing and perching.
-- The original stone race arch leads to three **lower, farther-apart difficulty rings** and a large continuous 3-D **figure-eight**: one low crossing beside the apple tree, then another higher than its crown. Colour routes add climbing and turning variation, with boosts, penalties and local bests.
+- One original stone arch freezes the Meadow clock and opens **Easy**, **Medium**, **Hard**, or **Walk the robot**. Each race begins directly ahead of the butterfly, follows a wide 3-D figure eight and finishes back through that same arch.
 - Mobile controls including a thumbstick, optional phone tilt steering and fullscreen support where the browser allows it.
-- **Optional EMU robot ride:** a second arch ~90° around the tree contains a small red-and-blue 3-D EMU sculpture. Fly through (no awkward rock landing) to pause and choose **Walk the robot** or **Keep flying**. The pinned 260M-step trained actor then drives six real MuJoCo servos on the Meadow heightfield. The optional ~12 MB model and physics downloads start **only** after choosing Walk; the homepage's direct Walk button still works.
+- **Optional EMU robot ride:** at the original stone arch choose **Walk the robot**, with no need to land on a rock or navigate another landmark. The pinned 260M-step neural actor drives six real MuJoCo servos on Meadow terrain. Robot assets (~12 MB) download **only** after clicking Walk; the direct homepage Walk button still works. Press Esc at the arch to keep flying without starting a race.
 - Third-person **mouse/touch drag orbit** and **wheel/pinch zoom** for both flying butterfly and walking EMU. Release eases back into follow mode; the chosen zoom persists.
 
 ## Files
@@ -25,7 +25,7 @@ A small, living WebGL landscape: rolling grassland, a procedural apple tree and 
 | `assets/meadow.css` | Responsive presentation and HUD styling. |
 | `assets/meadow.js` | WebGL world and renderer, procedural scenery, butterfly/race gameplay, camera and input. |
 | `assets/flight-physics.js` | Pure shared player/NPC lift and drag; a race-only stronger wingbeat profile powers physically attainable high routes without changing relaxed flight. |
-| `assets/race-course.js` | Deterministic 3-D figure-eight route, colour choice gates and continuous waypoint geometry. |
+| `assets/race-course.js` | Deterministic 3-D figure-eight routes starting at the arch and facing the flight direction. |
 | `ground-lizard.js` | Articulated IK lizard, started only after the WebGL world's bridge is ready. |
 | `skybox.png` | Local sky panorama, loaded by relative path. |
 | `emu/champion.emupolicy` | Public trained neural policy (~0.89 MB); loaded only on request. |
@@ -82,7 +82,7 @@ On mobile, **Recenter** makes the current phone angle neutral. Motion sensing re
 
 ## Hidden race
 
-Find the first stone arch beyond the tree. Flying through it reveals green, orange and red colour gates, now lower and farther downrange so you have time to choose. Each course is a wide 3-D **figure eight** with about **59 m of side-to-side span** (twice the original outer-lobe width): the first centre crossing skims near the tree and the second passes overhead, with extra noise and steeper climbs on higher difficulties. The course links begin close to the race arch and the last checkpoints curve behind it for a forward, level finish through the arch. The butterfly gets a race-only physical wingbeat upgrade — you still need to flap, carry speed and manage stamina. The race ends through the original arch. Skipping one checkpoint costs five seconds, while a 30-second gap without progress ends the attempt. Personal bests are stored only in the browser with `localStorage`.
+Find the old stone arch beyond the tree. **Flying through it pauses time** and offers exactly four choices: Easy, Medium, Hard, or Walk the robot (Esc resumes free flight). There are no extra colour-selection rings and no second robot arch. Each course is a wide 3-D **figure eight** with about **59 m of side-to-side span**. The first checkpoint begins *in front of the butterfly* whichever way you entered; the first centre crossing passes near the tree and the second goes above its crown. The approach is aligned with the arch and the final checkpoints curve back for a forward finish. The butterfly gets a race-only physical wingbeat upgrade — you still need to flap, carry speed and manage stamina. The race ends through the original arch. Skipping one checkpoint costs five seconds, while a 30-second gap without progress ends the attempt. Personal bests are stored only in the browser with `localStorage`.
 
 ## Notes
 
