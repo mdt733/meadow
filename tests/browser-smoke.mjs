@@ -43,7 +43,7 @@ try{
  await page.waitForFunction(()=>window.__meadowDiagnostics&&window.__lizardDiagnostics);
  const resources=await page.evaluate(()=>performance.getEntriesByType('resource').map(x=>x.name));
  for(const asset of ['/assets/meadow.css','/assets/meadow.js','/ground-lizard.js'])
-  assert.ok(resources.some(url=>url.endsWith(asset)),asset+' must load on a blank site');
+  assert.ok(resources.some(url=>new URL(url).pathname.endsWith(asset)),asset+' must load on a blank site');
 
  // Camera drag persists only after mouse release, not on every move.
  await page.evaluate(()=>{
