@@ -59,8 +59,10 @@ test('every difficulty points ahead of the butterfly after either arch entrance'
   for(let k=0;k<gates.length;k++){
    const g=gates[k];
    assert.ok(g.pos.every(Number.isFinite)&&g.normal.every(Number.isFinite));
-   assert.ok(g.pos[1]-height(g.pos[0],g.pos[2])>(k===gates.length-1?.8:1.3),
-    'rings must have physical terrain clearance');
+   const clearance=g.pos[1]-height(g.pos[0],g.pos[2]);
+   assert.ok(clearance>(k===gates.length-1?.8:1.3),
+    'terrain clearance: '+RACE_TYPES[i].name+' '+(reverse?'reverse':'forward')+
+    ' gate '+k+'/'+gates.length+' clearance='+clearance.toFixed(3));
    if(k===0)continue;
    const p=gates[k-1],d=g.pos.map((v,n)=>v-p.pos[n]);
    const planar=Math.hypot(d[0],d[2]);
