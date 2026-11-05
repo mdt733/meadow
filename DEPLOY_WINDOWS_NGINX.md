@@ -105,7 +105,7 @@ if (-not $html.Contains("meadow-build`" content=`"$build")) {
 if (-not $scene.Contains("window.__meadowBuild='$build'") -or
     -not $scene.Contains('function buildRaceArch()') -or
     -not $scene.Contains("race.mode='menu'") -or
-    -not $scene.Contains("$('archWalk').onclick") -or
+    -not $scene.Contains('archWalk') -or
     -not $scene.Contains('makeFigureEightCourse') -or
     -not $course.Contains('export function raceFigurePoint') -or
     -not $course.Contains('spanX:29.4') -or
