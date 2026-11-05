@@ -71,7 +71,9 @@ export function makeFigureEightCourse({index,start,direction,height,finishRadius
  // Arc-line-arc returns heading in the SAME direction as it entered,
  // with two generous radii rather than a 180-degree flip between rings.
  function roundedConnection(from,to,heading){
-  const side=norm([-heading[2],0,heading[0]]),delta=sub(to,from);
+  const lateral=norm([-heading[2],0,heading[0]]);
+  const side=(lateral[0]*-from[0]+lateral[2]*-from[2])>=0?lateral:mul(lateral,-1);
+  const delta=sub(to,from);
   const sTarget=delta[0]*heading[0]+delta[2]*heading[2];
   const qTarget=delta[0]*side[0]+delta[2]*side[2];
   if(sTarget>=-1)throw new Error('Invalid race turnaround geometry');
