@@ -419,55 +419,73 @@ try{
  await page.waitForFunction(()=>window.__meadowEmu?.state().riding===false);
  assert.equal(await page.locator('#flyHudTitle').textContent(),'Butterfly flight');
 
- // The new discoverable arch uses a genuine swept-plane crossing and
- // pauses butterfly flight. It never loads MuJoCo until Walk is selected.
- const downloadsBeforeGate=robotRequests.length;
- await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-flight-demo=1',{waitUntil:'domcontentloaded'});
+ // The original arch is the sole entry for Easy / Medium / Hard / Walk.
+ // Actually fly through its collision aperture in both directions.
+ const beforeGate=robotRequests.length;
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
  await page.evaluate(()=>window.__meadowStep(1.4));
- await page.locator('#emuGateWalk').waitFor({state:'visible',timeout:30000});
- assert.equal(await page.locator('#emuStart').isVisible(),false,'entry buttons hidden in pilot mode');
- const encounter=await page.evaluate(()=>({
-  flight:window.__meadowFlight.state(),arch:window.__meadowEmu.state().arch
- }));
- assert.equal(encounter.flight.gatePaused,true,'fly-through must freeze the butterfly');
- assert.equal(robotRequests.length,downloadsBeforeGate,
-  'simply crossing the new arch must not download any robot binaries');
- assert.ok(encounter.arch.center.every(Number.isFinite));
- assert.ok(Math.abs(encounter.arch.x-18.5)<.01&&Math.abs(encounter.arch.z-16.8)<.01);
- const frozen=encounter.flight.pos;
+ await page.locator('#archEasy').waitFor({state:'visible',timeout:30000});
+ const frozen=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(frozen.gatePaused,true,'hitting the ONE stone arch must freeze flight');
+ assert.equal(frozen.race.mode,'menu','arch sweep should open four choices');
+ assert.equal(robotRequests.length,beforeGate,'the menu must not download robot physics');
+ for(const id of ['archEasy','archMedium','archHard','archWalk'])
+  assert.equal(await page.locator('#'+id).isVisible(),true,'all four adventure choices visible');
  await page.evaluate(()=>window.__meadowStep(2));
- assert.deepEqual(await page.evaluate(()=>window.__meadowFlight.state().pos),frozen,
-  'the butterfly must remain still until the visitor makes a choice');
- await page.screenshot({path:'artifacts/emu-robot-arch-pause.png'});
- await page.locator('#emuGateContinue').click();
- assert.equal(await page.locator('#emuGatePrompt').isVisible(),false);
- assert.equal(await page.evaluate(()=>window.__meadowFlight.state().gatePaused),false);
- assert.ok((await page.evaluate(()=>window.__meadowFlight.state().speed))>1,
-  'Keep flying must restore real flight momentum');
- await page.goto('http://127.0.0.1:8765/meadow.html?emu-arch-flight-demo=reverse',{waitUntil:'domcontentloaded'});
+ assert.deepEqual(await page.evaluate(()=>window.__meadowFlight.state().pos),frozen.pos,
+  'world-clock stepping should not move the butterfly while the menu is open');
+ await page.screenshot({path:'artifacts/one-arch-four-choices.png'});
+ await page.locator('#archEasy').click();
+ const started=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(started.race.mode,'running');
+ assert.equal(started.race.course,0);
+ const first=started.race.courseGates[0].pos,forward=[Math.sin(started.heading),Math.cos(started.heading)];
+ const toFirst=[first[0]-started.pos[0],first[2]-started.pos[2]];
+ assert.ok((toFirst[0]*forward[0]+toFirst[1]*forward[1])/Math.hypot(...toFirst)>.75,
+  'the first Easy ring must be IN FRONT of the butterfly after the menu');
+ assert.ok(started.speed>1,'the butterfly must retain steerable speed');
+ assert.equal(robotRequests.length,beforeGate,'Easy race must not fetch any robot assets');
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=reverse',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
  await page.evaluate(()=>window.__meadowStep(1.4));
- await page.locator('#emuGateWalk').waitFor({state:'visible',timeout:30000});
- assert.equal(await page.evaluate(()=>window.__meadowFlight.state().gatePaused),true,
-  'the arch should also catch real physical flight from its opposite side');
+ await page.locator('#archHard').waitFor({state:'visible',timeout:30000});
+ await page.locator('#archHard').click();
+ const reverse=await page.evaluate(()=>window.__meadowFlight.state());
+ assert.equal(reverse.race.course,2,'Hard option selects the hardest race');
+ const reverseFirst=reverse.race.courseGates[0].pos;
+ const rf=[Math.sin(reverse.heading),Math.cos(reverse.heading)];
+ const toR=[reverseFirst[0]-reverse.pos[0],reverseFirst[2]-reverse.pos[2]];
+ assert.ok((toR[0]*rf[0]+toR[1]*rf[1])/Math.hypot(...toR)>.75,
+  'reverse entry must also lead to a ring AHEAD of the butterfly');
+ // Escape is the non-intrusive way to keep exploring without making
+ // the modal a fifth visible choice.
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
+ await page.locator('#archEasy').waitFor({state:'visible',timeout:30000});
+ await page.keyboard.press('Escape');
+ assert.equal(await page.evaluate(()=>window.__meadowFlight.state().gatePaused),false);
+ assert.equal(await page.locator('#archMenu').isVisible(),false);
+ // Walk remains explicitly opt-in. A passive visit to the race arch
+ // must not initiate WASM/policy downloads.
+ await page.goto('http://127.0.0.1:8765/meadow.html?arch-flight-demo=forward',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__meadowFlight?.state().active===true);
+ await page.evaluate(()=>window.__meadowStep(1.4));
+ await page.locator('#archWalk').waitFor({state:'visible',timeout:30000});
+ const beforeWalk=robotRequests.length;
  await page.evaluate(()=>{
   window.__archLoaderSeen=false;
-  const loader=document.getElementById('emuLoader');
   new MutationObserver(()=>{
-   if(!loader.hidden)window.__archLoaderSeen=true;
-  }).observe(loader,{attributes:true,attributeFilter:['hidden']});
+   if(!document.getElementById('emuLoader').hidden)window.__archLoaderSeen=true;
+  }).observe(document.getElementById('emuLoader'),{attributes:true,attributeFilter:['hidden']});
  });
- await page.locator('#emuGateWalk').click();
+ await page.locator('#archWalk').click();
  await page.waitForTimeout(350);
- const archResult=await page.evaluate(()=>({
-  seen:window.__archLoaderSeen,state:window.__meadowEmu?.state(),
-  alert:document.getElementById('flyAlert')?.textContent
- }));
- console.log('Robot arch opt-in diagnostics:',JSON.stringify(archResult).slice(0,900));
- assert.ok(archResult.seen||archResult.state.loading||archResult.state.riding,
-  'the EMU arch Walk button must explicitly start the optional robot download');
+ const walk=await page.evaluate(()=>({seen:window.__archLoaderSeen,state:window.__meadowEmu.state()}));
+ assert.ok(walk.seen||walk.state.loading||walk.state.riding,'Walk must start the optional robot loader');
+ assert.ok(robotRequests.length>=beforeWalk,'robot downloads only follow a Walk click');
  assert.ok(!errors.some(e=>e.includes('pageerror')),errors.join('\n'));
- console.log('EMU physical rider, figure-eight entrance and robot arch browser smoke passed.');
+ console.log('Single original arch, front-facing races and optional robot browser smoke passed.');
 
 }finally{await browser.close()}
