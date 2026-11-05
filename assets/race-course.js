@@ -77,12 +77,15 @@ export function makeFigureEightCourse({index,start,direction,height,finishRadius
  // Swing behind the arch and finish through its real crossing plane,
  // heading in the same direction as the butterfly originally entered.
  const behind=add(start,mul(f,-14));
+ behind[1]=Math.max(start[1]+1.25,height(behind[0],behind[2])+2.15);
  bezier(last,add(last,mul(outT,reverse?12:10)),
   sub(behind,mul(f,9)),behind,120,false);
- // Finish with a genuinely straight 14m arch approach, not merely a
- // mathematically aligned final tangent after a hairpin.
+ // Stay comfortably above the ground until the actual finish ring,
+ // then descend smoothly through the original stone arch.
+ const align=sub(start,mul(f,5));
+ align[1]=Math.max(start[1]+1.0,height(align[0],align[2])+1.95);
  bezier(behind,add(behind,mul(f,4.5)),
-  sub(start,mul(f,5)),start,55,true);
+  align,start,55,true);
  const total=distance.at(-1),count=Math.max(18,Math.round(total/kind.step));
  function nearestDistance(pos){
   let closest=Infinity,idx=0;
